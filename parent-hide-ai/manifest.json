@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Parent Hide AI",
+  "version": "1.0.0",
+  "description": "Blocks Google AI Mode and hides AI Overviews on search results.",
+  "permissions": ["declarativeNetRequest", "webNavigation"],
+  "host_permissions": [
+    "*://*.google.com/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.google.com/*", "*://google.com/*"],
+      "js": ["content.js"],
+      "css": ["hide.css"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,46 @@
+/*
+ * Hide Google AI Mode entry points and AI Overviews.
+ * Google's selectors change frequently, so we target multiple known patterns.
+ * The `!important` and broad selectors are intentional — better to over-hide
+ * than to let AI content leak through.
+ */
+
+/* --- AI Overview block at the top of search results --- */
+#m-x-content,
+div[data-attrid="AIOverview"],
+div[jsname][data-mcareid],
+div[data-subtree="aio"],
+div[data-hveid][data-ved] div[aria-label*="AI Overview" i],
+div[aria-label*="AI Overview" i],
+g-section-with-header:has(div[aria-label*="AI Overview" i]),
+div:has(> h2:first-child:is([aria-label*="AI Overview" i])),
+[data-async-context*="aio:"] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* --- AI Mode tab in the search-type bar (All / Images / Videos / AI Mode) --- */
+a[href*="udm=50"],
+div[role="listitem"]:has(a[href*="udm=50"]),
+div[role="tab"]:has(a[href*="udm=50"]) {
+  display: none !important;
+}
+
+/* --- AI Mode entry button on google.com homepage --- */
+a[aria-label*="AI Mode" i],
+div[aria-label*="AI Mode" i][role="button"],
+button[aria-label*="AI Mode" i],
+a[href*="/aimode"],
+a[href*="udm=50"] {
+  display: none !important;
+}
+
+/* --- "Dive deeper in AI Mode" / "Ask AI Mode" prompts on SERP --- */
+div:has(> a[href*="udm=50"]),
+div:has(> button[aria-label*="AI Mode" i]) {
+  display: none !important;
+}
