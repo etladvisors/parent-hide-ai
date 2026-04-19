@@ -126,10 +126,13 @@ Parent Hide AI does not collect, store, or transmit any personal data or browsin
 
 The extension modifies the appearance of Google Search result pages by hiding AI-generated content elements. It also redirects certain Google URLs (AI Mode) to standard search results. All processing occurs locally on the user's device.
 
-Contact: [your email address]
+Contact: irvin.matt@gmail.com
 ```
 
-> Host this at a public URL and paste the URL into the "Privacy policy URL" field.
+> **Privacy policy URL for the store listing:**
+> ```
+> https://github.com/etladvisors/parent-hide-ai/blob/main/PRIVACY_POLICY.md
+> ```
 
 ---
 
