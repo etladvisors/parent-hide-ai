@@ -1,11 +1,37 @@
 {
   "manifest_version": 3,
   "name": "Parent Hide AI",
-  "version": "1.0.0",
-  "description": "Blocks Google AI Mode and hides AI Overviews on search results.",
-  "permissions": ["declarativeNetRequest", "webNavigation"],
+  "version": "2.0.0",
+  "description": "Parental search filter: removes Google AI Mode and AI Overviews, and blocks searches matching a parent-managed keyword list.",
+  "minimum_chrome_version": "120",
+  "permissions": ["declarativeNetRequest", "webNavigation", "storage"],
   "host_permissions": [
-    "*://*.google.com/*"
+    "*://*.google.com/*",
+    "*://*.google.co.uk/*",
+    "*://*.bing.com/*",
+    "*://duckduckgo.com/*",
+    "*://*.yahoo.com/*",
+    "*://search.brave.com/*",
+    "*://*.ecosia.org/*",
+    "*://*.youtube.com/*",
+    "*://*.pinterest.com/*",
+    "*://*.reddit.com/*",
+    "*://*.tiktok.com/*",
+    "*://*.tumblr.com/*",
+    "*://*.instagram.com/*",
+    "*://*.myfitnesspal.com/*",
+    "*://*.cronometer.com/*",
+    "*://*.loseit.com/*",
+    "*://*.calorieking.com/*",
+    "*://*.fatsecret.com/*",
+    "*://*.nutritionix.com/*",
+    "*://*.caloriecounter.com/*",
+    "*://*.bmi-calculator.net/*",
+    "*://*.calculator.net/*",
+    "*://*.smartbmicalculator.com/*",
+    "*://*.noom.com/*",
+    "*://*.weightwatchers.com/*",
+    "*://*.ww.com/*"
   ],
   "declarative_net_request": {
     "rule_resources": [
@@ -17,15 +43,43 @@
     ]
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["*://www.google.com/*", "*://google.com/*"],
-      "js": ["content.js"],
+      "js": ["hide-ai.js"],
       "css": ["hide.css"],
       "run_at": "document_start",
       "all_frames": false
+    },
+    {
+      "matches": [
+        "*://*.google.com/*",
+        "*://*.google.co.uk/*",
+        "*://*.bing.com/*",
+        "*://duckduckgo.com/*",
+        "*://*.yahoo.com/*",
+        "*://search.brave.com/*",
+        "*://*.ecosia.org/*",
+        "*://*.youtube.com/*",
+        "*://*.pinterest.com/*",
+        "*://*.reddit.com/*",
+        "*://*.tiktok.com/*",
+        "*://*.tumblr.com/*",
+        "*://*.instagram.com/*"
+      ],
+      "js": ["query-guard.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "options_page": "options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html"],
+      "matches": ["<all_urls>"]
     }
   ],
   "icons": {

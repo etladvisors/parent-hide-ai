@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "test": "npx playwright test",
+    "test:rules": "node parent-hide-ai/test.mjs",
     "test:ci": "npx playwright test --grep @ci",
     "test:baseline": "npx playwright test tests/baseline.spec.ts",
     "test:monitor": "npx playwright test tests/baseline.spec.ts tests/ai-hiding.spec.ts"
