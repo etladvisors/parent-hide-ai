@@ -15,41 +15,34 @@ Parent Hide AI
 ### Short Description (132 characters max)
 
 ```
-Parental control tool that removes Google AI Mode and AI Overview elements from Google Search results for a distraction-free experience.
-```
-
-> 136 chars — trim if needed:
-
-```
-Parental control that removes Google AI Mode and AI Overview elements from Google Search for a distraction-free experience.
+Parental search filter: removes Google AI Mode and AI Overviews, and blocks searches matching a parent-managed keyword list.
 ```
 
 ### Detailed Description (16,000 characters max)
 
 ```
-Parent Hide AI is a lightweight parental control extension that removes AI-generated content from Google Search results.
+Parent Hide AI is a parental control extension that filters search for a supervised child's browser.
 
 What it does:
 - Hides the "AI Overview" summary block that appears at the top of Google Search results
-- Removes the "AI Mode" tab from the Google Search toolbar
-- Removes the "AI Mode" button from the Google homepage
+- Removes the "AI Mode" tab from the Google Search toolbar and the AI Mode button from the Google homepage
 - Redirects AI Mode URLs back to standard Google Search results
+- Blocks searches whose query matches a parent-configured keyword list on supported search and social sites (Google, Bing, DuckDuckGo, Yahoo, Brave, Ecosia, YouTube, Pinterest, Reddit, TikTok, Tumblr, Instagram), showing a supportive block page instead
+- Blocks a parent-configured list of websites
 
 Why it exists:
-This extension was built for parents who want their children to use Google Search as a traditional search engine — seeing real web results from real sources rather than AI-generated summaries. It is designed for use on a child's Chromebook managed through Google Family Link.
+This extension was built for parents who want their children to use search as a traditional search engine — seeing real web results rather than AI-generated summaries — and who need to restrict a specific, parent-chosen set of search topics for their child's wellbeing. It is designed for use on a child's Chromebook managed through Google Family Link.
 
 How it works:
-- Uses CSS rules to hide known Google AI interface elements on search result pages
-- Uses a content script with a MutationObserver to detect and hide AI elements that load dynamically after the initial page render
-- Uses Chrome's declarativeNetRequest API to redirect AI Mode URLs (containing the udm=50 parameter or /aimode path) back to standard search
+- Uses CSS rules and a MutationObserver content script to hide Google AI interface elements
+- Uses Chrome's declarativeNetRequest API to redirect AI Mode URLs back to standard search, and to redirect searches matching the parent's keyword list to a local block page
 - Uses the webNavigation API to handle in-page navigation events that bypass network-level rules
 
 Privacy:
-- This extension does not collect, store, or transmit any user data
-- This extension does not use analytics, tracking, or remote servers
-- All processing happens locally in the browser
-- The extension only runs on google.com domains
-- No data leaves the browser
+- This extension does not transmit any data off the device
+- It does not use analytics, tracking, or remote servers
+- Blocked search attempts may be recorded locally on the device (only there) so a parent can review them from the options page; this can be disabled and cleared
+- The extension only runs on the search and social sites listed above
 ```
 
 ---
@@ -79,7 +72,7 @@ English
 > This field is required. Reviewers reject vague or multi-purpose descriptions. Be specific about exactly one thing.
 
 ```
-This extension removes Google AI Mode and AI Overview elements from Google Search results pages, redirecting AI Mode URLs to standard search results. It is a parental control tool for providing children with a traditional, non-AI search experience.
+This extension is a parental control filter for search. It removes Google AI Mode and AI Overview elements from Google Search results, and blocks searches that match a parent-configured keyword list (and a parent-configured list of sites) on supported search engines, redirecting them to a local block page.
 ```
 
 ### Permission Justifications
@@ -89,27 +82,34 @@ This extension removes Google AI Mode and AI Overview elements from Google Searc
 #### `declarativeNetRequest`
 
 ```
-Used to redirect Google Search URLs that contain the AI Mode parameter (udm=50) or AI Mode paths (/aimode, /async/aimode) back to standard Google Search results. This ensures that if a child clicks an AI Mode link or is redirected to AI Mode, they are sent to regular search results instead. The rules are defined statically in rules.json and only match google.com URLs.
+Used for two things: (1) redirecting Google Search URLs that contain the AI Mode parameter (udm=50) or AI Mode paths (/aimode, /async/aimode) back to standard Google Search results, via static rules in rules.json; and (2) redirecting searches whose query matches the parent-configured keyword list, and navigations to parent-blocked sites, to the extension's local block page, via dynamic rules compiled from the parent's configuration. All matching happens inside the browser.
 ```
 
 #### `webNavigation`
 
 ```
-Used to detect in-page (single-page application) navigations on google.com that do not trigger traditional network requests. Google Search uses pushState-based navigation, so some AI Mode transitions happen without a full page load. The webNavigation.onHistoryStateUpdated and onBeforeNavigate events allow the extension to catch these transitions and redirect them to standard search. This permission is only used on google.com.
+Used to detect in-page (single-page application) navigations that do not trigger traditional network requests. Google Search uses pushState-based navigation, so some AI Mode transitions happen without a full page load. The webNavigation.onHistoryStateUpdated and onBeforeNavigate events allow the extension to catch these transitions and redirect them to standard search.
 ```
 
-#### Host permission: `*://*.google.com/*`
+#### `storage`
 
 ```
-Required so that the extension's content script (which hides AI Overview elements in the page) and declarativeNetRequest rules (which redirect AI Mode URLs) can operate on Google Search pages. The extension only modifies google.com pages and does not access any other websites.
+Used to pass the compiled keyword pattern from the service worker to the content script, and to optionally record blocked search attempts locally on the device so a parent can review them from the options page. Nothing is transmitted anywhere; the log is capped and can be disabled or cleared.
+```
+
+#### Host permissions (explicit list of search/social sites and blocked sites)
+
+```
+Required so that the extension's content scripts and declarativeNetRequest rules can operate on the pages they filter: google.com pages for AI-element hiding, and the listed search and social sites (Google, Bing, DuckDuckGo, Yahoo, Brave, Ecosia, YouTube, Pinterest, Reddit, TikTok, Tumblr, Instagram) plus the parent-blocked sites for search keyword and site blocking. The list is explicit rather than <all_urls>; the extension does not access any other websites.
 ```
 
 ### Data Use Disclosures
 
-> In the Privacy Practices tab, you must certify data use. Select the following:
+> In the Privacy Practices tab, you must certify data use. Blocked search queries are stored locally and never transmitted, so the safe/honest disclosure is:
 
-- **Does your extension collect or use any user data?** No
+- **Web history / User activity:** disclosed as collected (stored locally on the device only, never sold or transferred; used solely for the extension's single purpose — parental review of blocked attempts)
 - Certify compliance with the Chrome Web Store Developer Program Policies
+- Certify: data is not sold to third parties, not used or transferred for purposes unrelated to the single purpose, and not used or transferred to determine creditworthiness or for lending
 
 ---
 
@@ -117,17 +117,7 @@ Required so that the extension's content script (which hides AI Overview element
 
 > Required if you declare any permissions. For an unlisted personal-use extension, a simple inline policy is fine. You can host this as a GitHub Gist or paste it into a simple web page.
 
-```
-Privacy Policy for Parent Hide AI
-
-Last updated: April 2026
-
-Parent Hide AI does not collect, store, or transmit any personal data or browsing information. The extension operates entirely within the local browser. It does not communicate with any external servers. It does not use cookies, analytics, or tracking of any kind. No data is shared with third parties.
-
-The extension modifies the appearance of Google Search result pages by hiding AI-generated content elements. It also redirects certain Google URLs (AI Mode) to standard search results. All processing occurs locally on the user's device.
-
-Contact: irvin.matt@gmail.com
-```
+> The current policy text lives in `PRIVACY_POLICY.md` in the repo root — keep the hosted copy in sync with it. It covers both the AI hiding and the local-only logging of blocked search attempts.
 
 > **Privacy policy URL for the store listing:**
 > ```
@@ -190,7 +180,9 @@ Before submitting, verify:
 - [ ] 128x128 icon is uploaded as the store icon
 - [ ] Description does not reference "blocking" or "removing" other companies' features in a way that implies malice — use neutral language like "hides," "removes from view," "redirects"
 - [ ] No mention of circumventing or bypassing security/safety features (this is a content preference tool, not a circumvention tool)
-- [ ] `manifest.json` version field is set (currently `1.0.0`)
+- [ ] `manifest.json` version field is set (currently `2.0.0`)
+- [ ] Data use disclosure reflects the local-only log of blocked search attempts
+- [ ] Note: v2 adds permissions (`storage` + more hosts). Chrome disables the extension on existing installs until the new permissions are accepted — plan to re-approve it on the child's device after the update ships
 
 ---
 
@@ -201,7 +193,7 @@ Before submitting, verify:
 | Missing or vague single-purpose description | Single purpose is specific: "removes AI Mode and AI Overview elements from Google Search" |
 | Unjustified permissions | Each permission has a detailed justification tied to specific functionality |
 | Missing privacy policy | Privacy policy provided and hosted at a public URL |
-| "Broad host permissions" flag | Host permission is limited to `*.google.com` only, not `<all_urls>` |
-| Data use disclosure missing | Completed with "no data collected" |
+| "Broad host permissions" flag | Host permissions are an explicit list of the filtered sites, not `<all_urls>` |
+| Data use disclosure missing | Completed; local-only log disclosed, nothing transmitted |
 | Extension modifies search results | Clearly framed as a parental control / content filtering tool, not an ad blocker or SEO manipulation tool |
 | No screenshots | Screenshots provided showing the extension's effect |
