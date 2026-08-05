@@ -69,6 +69,8 @@ Test URLs:
 
 Run `npm run test:rules` after any `config.js` change — it checks both block and allow cases (false positives matter as much as misses).
 
+Then run `npm run test:smoke` — it loads the extension in headless Chromium (`channel: "chromium"`; the default headless shell can't load extensions) and verifies Chrome actually *accepts* the compiled rules and that blocking redirects fire end-to-end. This matters because `test:rules` cannot catch rules Chrome rejects at install time.
+
 ## Maintenance
 
 ### AI hiding
@@ -79,6 +81,7 @@ Google frequently changes DOM structure. When AI content leaks through:
 
 ### Search Guard
 - Term/domain edits go in `config.js` only; reload the extension afterward.
+- **Chrome caps each `regexFilter` at 2KB of compiled RE2 program — in practice only ~10 character classes per rule** (each class costs ~150–200 bytes compiled; `.` and literals are nearly free, which is why `compile.js` uses `.{0,3}` as the word separator). `updateDynamicRules` is all-or-nothing, so `background.js` falls back to per-rule install and records failures in `sg_error` (`chrome.storage.local`). If blocking stops working wholesale, check `sg_error` first, then run `npm run test:smoke`.
 - **If a search engine or blocked domain is added to `config.js`, a matching entry must be added to `host_permissions` in `manifest.json`** (and to the `query-guard.js` `content_scripts` matches for engines) — DNR rules silently don't fire on hosts without permission.
 - Adding new permissions in an update disables the extension until the user re-accepts it.
 - The keyword list is sensitive (eating-disorder related, for a specific child). Keep the block page and docs non-judgmental in tone; `PRIVACY_POLICY.md` and `CHROME_WEB_STORE_LISTING.md` must stay accurate about the local-only logging.

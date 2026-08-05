@@ -3,14 +3,19 @@
 // You should not need to edit this.
 // ---------------------------------------------------------------------------
 
-// Chrome caps the compiled size of a single regexFilter, so terms are split
-// across several rules rather than jammed into one giant alternation.
-const TERMS_PER_RULE = 20;
+// Chrome caps a single regexFilter at 2KB of *compiled* RE2 program — in
+// practice only ~100-150 characters of case-insensitive pattern. So: hosts are
+// matched with the requestDomains condition (not regex), and each term gets
+// its own small rule instead of sharing one big alternation.
 
 const RE_META = /[.*+?^${}()|[\]\\]/g;
 
-// Separators a space can turn into once a query is URL-encoded.
-const SPACE = "(?:\\+|%20|%2[bB]|[-_.])";
+// A space between words can appear as " ", "+", "%20", "%2B", "-", "_", "."
+// or nothing at all once URL-encoded. Any 0-3 characters covers all of them.
+// It must be ".", not a character class: Chrome's 2KB compiled-regex budget
+// fits only ~10 classes per rule (measured empirically — each class costs
+// ~150-200 bytes compiled), while "." and literals are nearly free.
+const SPACE = ".{0,3}";
 
 /**
  * Convert one config term into a regex fragment.
@@ -29,31 +34,21 @@ export function termToPattern(term) {
   return wholeWord ? `\\b${escaped}\\b` : escaped;
 }
 
-function chunk(arr, size) {
-  const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
-
 /**
- * Build the regexFilter for one engine + one batch of terms.
+ * Build the regexFilter for one term.
  *
  * Anatomy:
- *   ^https?://          scheme
- *   (?:[a-z0-9-]+\.)*   any subdomains
- *   {host}              the engine
- *   {path}[^?#]*        the search path, plus anything before the query
- *   \?(?:[^#]*&)?       the query string, {param} need not come first
- *   {param}=            the parameter carrying the search terms
- *   ([^&#]*(?:terms))   capture group 1: the query up to and including a hit
+ *   ^[^#]*        scheme, host and path (host is enforced by requestDomains);
+ *                 also lets {param} sit anywhere in the query string
+ *   [?&]{param}=  the parameter carrying the search terms, at a real boundary
+ *   ([^&#]*term)  capture group 1: the query up to and including the hit
+ *
+ * The regex must match from ^ because regexSubstitution replaces the matched
+ * span — an unanchored match would leave the original URL prefix in front of
+ * the block-page URL.
  */
-function engineRegex(engine, terms) {
-  const path = engine.path === "/" ? "" : engine.path.replace(/\/$/, "");
-  const alternation = terms.map(termToPattern).join("|");
-  return (
-    `^https?://(?:[a-z0-9-]+\\.)*${engine.host}${path}[^?#]*` +
-    `\\?(?:[^#]*&)?${engine.param}=([^&#]*(?:${alternation}))`
-  );
+function termRegex(param, term) {
+  return `^[^#]*[?&]${param}=([^&#]*(?:${termToPattern(term)}))`;
 }
 
 /**
@@ -65,16 +60,23 @@ export function buildRules(cfg, target) {
   const rules = [];
   let id = 1;
 
-  const batches = chunk(cfg.BLOCKED_TERMS.filter(Boolean), TERMS_PER_RULE);
-
+  // Engines sharing a query param share one requestDomains list.
+  const domainsByParam = new Map();
   for (const engine of cfg.SEARCH_ENGINES) {
-    for (const terms of batches) {
+    const list = domainsByParam.get(engine.param) || [];
+    for (const d of engine.domains) if (!list.includes(d)) list.push(d);
+    domainsByParam.set(engine.param, list);
+  }
+
+  for (const [param, requestDomains] of domainsByParam) {
+    for (const term of cfg.BLOCKED_TERMS.filter(Boolean)) {
       rules.push({
         id: id++,
         priority: 2,
         condition: {
-          regexFilter: engineRegex(engine, terms),
+          regexFilter: termRegex(param, term),
           isUrlFilterCaseSensitive: false,
+          requestDomains,
           resourceTypes: ["main_frame", "sub_frame", "xmlhttprequest"],
         },
         action: {

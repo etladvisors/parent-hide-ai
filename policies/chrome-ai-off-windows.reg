@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+; Disables Google Chrome's built-in AI features machine-wide on Windows.
+; Double-click this file (needs admin), then fully close and reopen Chrome.
+; Verify at chrome://policy. Chrome will show "Managed by your organization".
+;
+; AIModeSettings=1        removes the AI Mode button from the address bar and
+;                         New Tab page, and disables AI Mode itself
+; GenAiDefaultSettings=2  default-disables ALL GenAI features, current and future
+; GeminiSettings=1        disables the Gemini integration
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]
+"AIModeSettings"=dword:00000001
+"GenAiDefaultSettings"=dword:00000002
+"GeminiSettings"=dword:00000001
+
+; Once the extension is published to the Chrome Web Store, force-install it so
+; it cannot be disabled or removed: replace EXTENSION_ID_HERE and merge this too.
+; [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist]
+; "1"="EXTENSION_ID_HERE;https://clients2.google.com/service/update2/crx"
