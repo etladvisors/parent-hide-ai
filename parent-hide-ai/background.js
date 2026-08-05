@@ -61,24 +61,48 @@ const BLOCK_PAGE = chrome.runtime.getURL("blocked.html");
 async function install() {
   const rules = buildRules(cfg, BLOCK_PAGE);
 
-  // Clear whatever was there before, then install the current set.
+  // updateDynamicRules is all-or-nothing: one bad rule and NOTHING installs.
+  // If the bulk call fails, fall back to one-at-a-time so a single oversized
+  // rule (Chrome's 2KB compiled-regex cap) only costs itself, and record the
+  // failure in storage so it can't go unnoticed.
+  let error = null;
+  let installed = rules.length;
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: existing.map((r) => r.id),
-    addRules: rules,
-  });
+  try {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: existing.map((r) => r.id),
+      addRules: rules,
+    });
+  } catch (e) {
+    error = String(e?.message || e);
+    console.error(`[Search Guard] bulk rule install failed: ${error}`);
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: existing.map((r) => r.id),
+    });
+    installed = 0;
+    for (const rule of rules) {
+      try {
+        await chrome.declarativeNetRequest.updateDynamicRules({ addRules: [rule] });
+        installed++;
+      } catch (e2) {
+        console.error(`[Search Guard] rule ${rule.id} rejected: ${e2?.message || e2}`);
+      }
+    }
+  }
 
   // Content scripts can't import modules, so hand them what they need here.
+  // Written even if DNR install failed — query-guard still works from this.
   await chrome.storage.local.set({
     sg_pattern: cfg.BLOCKED_TERMS.filter(Boolean).map(termToPattern).join("|"),
     sg_engines: cfg.SEARCH_ENGINES.map((e) => e.param),
     sg_logging: cfg.LOG_ATTEMPTS,
     sg_logLimit: cfg.LOG_LIMIT,
     sg_support: cfg.SUPPORT_LINE,
-    sg_ruleCount: rules.length,
+    sg_ruleCount: installed,
+    sg_error: error,
   });
 
-  console.info(`[Search Guard] ${rules.length} rules installed.`);
+  if (!error) console.info(`[Search Guard] ${rules.length} rules installed.`);
 }
 
 chrome.runtime.onInstalled.addListener(install);

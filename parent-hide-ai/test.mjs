@@ -4,8 +4,20 @@ import { buildRules } from "./rules/compile.js";
 
 const rules = buildRules(cfg, "chrome-extension://test/blocked.html");
 const regexRules = rules.filter((r) => r.condition.regexFilter);
-const compiled = regexRules.map((r) => new RegExp(r.condition.regexFilter, "i"));
-const blocks = (url) => compiled.some((re) => re.test(url));
+const compiled = regexRules.map((r) => ({
+  re: new RegExp(r.condition.regexFilter, "i"),
+  domains: r.condition.requestDomains || null,
+}));
+
+// Mirror Chrome: requestDomains matches the domain itself or any subdomain.
+function domainMatches(domains, url) {
+  if (!domains) return true;
+  const host = new URL(url).hostname;
+  return domains.some((d) => host === d || host.endsWith("." + d));
+}
+
+const blocks = (url) =>
+  compiled.some(({ re, domains }) => domainMatches(domains, url) && re.test(url));
 
 // [url, shouldBlock] — add your own, especially "allow" cases.
 const tests = [
@@ -19,8 +31,13 @@ const tests = [
   ["https://www.bing.com/search?q=TDEE", true],
   ["https://www.reddit.com/search/?q=edtwt", true],
   ["https://www.pinterest.com/search/pins/?q=bonespo", true],
+  ["https://www.youtube.com/results?search_query=how+much+should+i+weigh", true],
+  ["https://www.tiktok.com/search?q=pro%20ana", true],
+  ["https://search.yahoo.com/search?p=thinspo", true],
 
   ["https://www.google.com/search?q=diethyl+ether", false],
+  ["https://www.google.com/search?q=banana+bread+recipe", false],
+  ["https://www.google.com/search?q=weather+tomorrow", false],
   ["https://www.google.com/search?q=dietitian+near+me", false],
   ["https://www.google.com/search?q=history+of+rome", false],
   ["https://www.google.com/search?q=photosynthesis+diagram", false],

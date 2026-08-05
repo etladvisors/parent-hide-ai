@@ -88,23 +88,24 @@ export const BLOCKED_DOMAINS = [
   "ww.com",
 ];
 
-// Search engines to watch. Each entry names the query parameter that carries
-// the search terms. Add more if you find one that slips through.
+// Search engines to watch. `domains` are literal domains (subdomains are
+// included automatically); `param` names the query parameter that carries the
+// search terms. Any URL on these domains with a matching term in that param is
+// blocked — search paths, image search, autocomplete, all of it.
+// If you add a domain here, add it to host_permissions in manifest.json too.
 export const SEARCH_ENGINES = [
-  { host: "google\\.[a-z.]{2,7}", path: "/search", param: "q" },
-  { host: "google\\.[a-z.]{2,7}", path: "/complete/search", param: "q" }, // autocomplete
-  { host: "bing\\.com", path: "/search", param: "q" },
-  { host: "bing\\.com", path: "/images/search", param: "q" },
-  { host: "duckduckgo\\.com", path: "/", param: "q" },
-  { host: "search\\.yahoo\\.com", path: "/search", param: "p" },
-  { host: "search\\.brave\\.com", path: "/search", param: "q" },
-  { host: "www\\.ecosia\\.org", path: "/search", param: "q" },
-  { host: "youtube\\.com", path: "/results", param: "search_query" },
-  { host: "pinterest\\.[a-z.]{2,7}", path: "/search/", param: "q" },
-  { host: "reddit\\.com", path: "/search", param: "q" },
-  { host: "tiktok\\.com", path: "/search", param: "q" },
-  { host: "tumblr\\.com", path: "/search", param: "q" },
-  { host: "instagram\\.com", path: "/explore/search", param: "q" },
+  { domains: ["google.com", "google.co.uk"], param: "q" },
+  { domains: ["bing.com"], param: "q" },
+  { domains: ["duckduckgo.com"], param: "q" },
+  { domains: ["search.yahoo.com"], param: "p" },
+  { domains: ["search.brave.com"], param: "q" },
+  { domains: ["ecosia.org"], param: "q" },
+  { domains: ["youtube.com"], param: "search_query" },
+  { domains: ["pinterest.com"], param: "q" },
+  { domains: ["reddit.com"], param: "q" },
+  { domains: ["tiktok.com"], param: "q" },
+  { domains: ["tumblr.com"], param: "q" },
+  { domains: ["instagram.com"], param: "q" },
 ];
 
 // Record blocked attempts locally so you can review them at chrome://extensions

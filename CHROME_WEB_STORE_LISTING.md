@@ -27,7 +27,7 @@ What it does:
 - Hides the "AI Overview" summary block that appears at the top of Google Search results
 - Removes the "AI Mode" tab from the Google Search toolbar and the AI Mode button from the Google homepage
 - Redirects AI Mode URLs back to standard Google Search results
-- Blocks searches whose query matches a parent-configured keyword list on supported search and social sites (Google, Bing, DuckDuckGo, Yahoo, Brave, Ecosia, YouTube, Pinterest, Reddit, TikTok, Tumblr, Instagram), showing a supportive block page instead
+- Blocks searches whose query matches a parent-configured keyword list on supported search engines and social platforms, showing a supportive block page instead
 - Blocks a parent-configured list of websites
 
 Why it exists:
@@ -42,7 +42,7 @@ Privacy:
 - This extension does not transmit any data off the device
 - It does not use analytics, tracking, or remote servers
 - Blocked search attempts may be recorded locally on the device (only there) so a parent can review them from the options page; this can be disabled and cleared
-- The extension only runs on the search and social sites listed above
+- The extension only runs on the specific sites listed in its permissions
 ```
 
 ---
@@ -100,7 +100,7 @@ Used to pass the compiled keyword pattern from the service worker to the content
 #### Host permissions (explicit list of search/social sites and blocked sites)
 
 ```
-Required so that the extension's content scripts and declarativeNetRequest rules can operate on the pages they filter: google.com pages for AI-element hiding, and the listed search and social sites (Google, Bing, DuckDuckGo, Yahoo, Brave, Ecosia, YouTube, Pinterest, Reddit, TikTok, Tumblr, Instagram) plus the parent-blocked sites for search keyword and site blocking. The list is explicit rather than <all_urls>; the extension does not access any other websites.
+Required so that the extension's content scripts and declarativeNetRequest rules can operate on the pages they filter: google.com pages for AI-element hiding, and the search engines and social platforms enumerated in the manifest's host_permissions (plus the parent-blocked sites) for search keyword and site blocking. The list is explicit rather than <all_urls>; the extension does not access any other websites.
 ```
 
 ### Data Use Disclosures
@@ -196,4 +196,5 @@ Before submitting, verify:
 | "Broad host permissions" flag | Host permissions are an explicit list of the filtered sites, not `<all_urls>` |
 | Data use disclosure missing | Completed; local-only log disclosed, nothing transmitted |
 | Extension modifies search results | Clearly framed as a parental control / content filtering tool, not an ad blocker or SEO manipulation tool |
+| Keyword spam (rejected once, ref "Yellow Argon", Jul 2026) | Do NOT enumerate brand names (Bing, YouTube, TikTok, …) anywhere in the listing text — say "supported search engines and social platforms" and let the manifest's host_permissions be the authoritative list |
 | No screenshots | Screenshots provided showing the extension's effect |
