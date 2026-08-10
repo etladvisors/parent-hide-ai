@@ -27,7 +27,13 @@
     font-size: 1.75rem;
     margin: 0 0 0.375rem;
   }
-  .sub { color: var(--muted); margin: 0 0 2rem; }
+  .sub { color: var(--muted); margin: 0 0 0.5rem; }
+  h2 {
+    font-family: Georgia, "Tinos", serif;
+    font-weight: 400;
+    font-size: 1.25rem;
+    margin: 2.5rem 0 0.75rem;
+  }
   .row {
     display: flex;
     justify-content: space-between;
@@ -57,8 +63,16 @@
   <main>
     <h1>Search Guard</h1>
     <p class="sub" id="status"></p>
+    <p class="sub" id="remote"></p>
+    <button id="refresh" type="button">Refresh block list now</button>
+
+    <h2>Blocked attempts</h2>
     <div id="log"></div>
     <button id="clear" type="button">Clear this list</button>
+
+    <h2>Recent searches</h2>
+    <div id="searches"></div>
+    <button id="clear-searches" type="button">Clear this list</button>
   </main>
   <script src="options.js" type="module"></script>
 </body>

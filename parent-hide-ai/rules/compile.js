@@ -105,5 +105,23 @@ export function buildRules(cfg, target) {
     });
   }
 
+  // Domains added via remote config. These use a "block" action, not a
+  // redirect: DNR redirect rules silently don't fire on hosts missing from
+  // manifest.json host_permissions, but block rules work everywhere with the
+  // bare declarativeNetRequest permission. The child sees Chrome's
+  // ERR_BLOCKED_BY_CLIENT page instead of blocked.html — the trade for never
+  // needing a store republish to block a new site.
+  for (const domain of (cfg.REMOTE_BLOCKED_DOMAINS || []).filter(Boolean)) {
+    rules.push({
+      id: id++,
+      priority: 1,
+      condition: {
+        urlFilter: `||${domain}^`,
+        resourceTypes: ["main_frame"],
+      },
+      action: { type: "block" },
+    });
+  }
+
   return rules;
 }

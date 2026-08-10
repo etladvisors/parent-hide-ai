@@ -44,7 +44,12 @@ if (!sw) {
 await new Promise((r) => setTimeout(r, 1500));
 const state = await sw.evaluate(async () => {
   const dynamic = await chrome.declarativeNetRequest.getDynamicRules();
-  const storage = await chrome.storage.local.get(["sg_ruleCount", "sg_error"]);
+  const storage = await chrome.storage.local.get([
+    "sg_ruleCount",
+    "sg_error",
+    "sg_remote",
+    "sg_remoteError",
+  ]);
   return { dynamicCount: dynamic.length, ...storage };
 });
 console.log("state:", JSON.stringify(state));
@@ -57,6 +62,22 @@ if (state.sg_error) {
 if (state.dynamicCount === 0) {
   failures++;
   console.log("FAIL  no dynamic rules installed — Search Guard is inert");
+}
+// Only meaningful when config.js has a REMOTE_CONFIG_URL set: proves real
+// Chrome fetched and cached the live remote blocklist.
+const { REMOTE_CONFIG_URL } = await import(path.join(EXT, "config.js"));
+if (REMOTE_CONFIG_URL) {
+  if (!state.sg_remote) {
+    failures++;
+    console.log(
+      `FAIL  remote config never landed (${state.sg_remoteError || "no error recorded"})`
+    );
+  } else {
+    console.log(
+      `PASS  remote config fetched: version ${state.sg_remote.version}, ` +
+        `${state.sg_remote.terms.length} terms, ${state.sg_remote.domains.length} domains`
+    );
+  }
 }
 
 const page = await context.newPage();

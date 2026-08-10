@@ -26,7 +26,7 @@ Chrome extension (Manifest V3) with two parental-control features:
    - MutationObserver catches lazy-loaded AI content
    - Text-pattern matching for elements with dynamic class names
 
-### Search Guard (two layers)
+### Search Guard (two layers + remote config)
 
 1. **Dynamic Declarative Net Request rules** - `background.js` compiles `config.js`
    (terms, domains, engines) into dynamic DNR redirect rules via
@@ -37,7 +37,21 @@ Chrome extension (Manifest V3) with two parental-control features:
 2. **Content Script (`query-guard.js`)** - pushState backstop for SPA sites
    (YouTube, Reddit, Pinterest, TikTok) where the visible page doesn't reload.
    Reads the compiled term pattern from `chrome.storage.local` (set by the
-   service worker — content scripts can't import modules).
+   service worker — content scripts can't import modules). Also reports every
+   observed query to the service worker, which appends it to a local-only
+   `sg_searchLog` (capped) for parental review.
+
+3. **Remote blocklist (v3)** - if `REMOTE_CONFIG_URL` is set in `config.js`,
+   `background.js` fetches `{version, terms[], domains[]}` JSON on a
+   `chrome.alarms` schedule and merges it ADDITIVELY over the baked-in lists
+   (remote can tighten, never loosen). Remote-added domains use DNR `block`
+   actions, not redirects — redirect rules silently don't fire on hosts
+   missing from `host_permissions`, block rules work everywhere. Backend is
+   `server/worker.js` (Cloudflare Worker + KV; see `server/README.md`).
+   `tools/digest/` is a launchd job for the child's Mac that reads the local
+   logs from Chrome's LevelDB on disk and uploads a nightly digest to the
+   Worker — the extension itself transmits nothing (keeps the CWS
+   data-disclosure posture "local-only").
 
 Static and dynamic DNR rules live in separate namespaces; no ID coordination is needed between `rules.json` and the compiled rules.
 
@@ -52,8 +66,10 @@ Static and dynamic DNR rules live in separate namespaces; no ID coordination is 
 - `hide.css` - CSS selectors for known AI elements
 - `query-guard.js` - Search Guard SPA backstop
 - `blocked.html` / `blocked.js` - Block page + local logging
-- `options.html` / `options.js` - Parent-facing blocked-attempts log
+- `options.html` / `options.js` - Parent-facing log viewer (blocked attempts + recent searches) with remote-list status and manual refresh
 - `test.mjs` - Offline harness for compiled Search Guard rules
+- `server/` - Cloudflare Worker: serves the remote blocklist (`GET/PUT /config`), receives nightly digests (`POST /log`, `GET /logs`)
+- `tools/digest/` - launchd job for the child's Mac: uploads the local logs to the Worker nightly
 
 ## Development
 
@@ -80,7 +96,9 @@ Google frequently changes DOM structure. When AI content leaks through:
 3. Add CSS selectors to `hide.css` or text patterns to `AI_TEXT_PATTERNS` in `hide-ai.js`
 
 ### Search Guard
-- Term/domain edits go in `config.js` only; reload the extension afterward.
+- Day-to-day term/domain updates go through the remote blocklist: `PUT /config` on the Worker (see `server/README.md`). The extension picks changes up within `REMOTE_REFRESH_MINUTES` (default 30) — no republish, no reload.
+- Baked-in edits (engines, defaults, `REMOTE_CONFIG_URL` itself) still go in `config.js` and require a reload/republish.
+- Remote terms are validated by `sanitizeRemote()` in `background.js` (length caps, domain syntax) but still hit the 2KB regex cap below — keep remote terms short and simple, and prefer plain words over anything regex-ish.
 - **Chrome caps each `regexFilter` at 2KB of compiled RE2 program — in practice only ~10 character classes per rule** (each class costs ~150–200 bytes compiled; `.` and literals are nearly free, which is why `compile.js` uses `.{0,3}` as the word separator). `updateDynamicRules` is all-or-nothing, so `background.js` falls back to per-rule install and records failures in `sg_error` (`chrome.storage.local`). If blocking stops working wholesale, check `sg_error` first, then run `npm run test:smoke`.
 - **If a search engine or blocked domain is added to `config.js`, a matching entry must be added to `host_permissions` in `manifest.json`** (and to the `query-guard.js` `content_scripts` matches for engines) — DNR rules silently don't fire on hosts without permission.
 - Adding new permissions in an update disables the extension until the user re-accepts it.

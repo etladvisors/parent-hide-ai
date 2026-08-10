@@ -52,6 +52,56 @@ for (const [url, want] of tests) {
   console.log(`${ok ? "ok  " : "FAIL"}  expected ${want ? "block" : "allow"}  ${url}`);
 }
 
+// --- Remote-config merge: terms redirect, remote domains block --------------
+// Mirrors what background.js mergedConfig() produces when remote config adds
+// a term and a domain not present in config.js.
+const merged = {
+  ...cfg,
+  BLOCKED_TERMS: [...cfg.BLOCKED_TERMS, "zzznewslang"],
+  REMOTE_BLOCKED_DOMAINS: ["remote-example.com"],
+};
+const mergedRules = buildRules(merged, "chrome-extension://test/blocked.html");
+const mergedRegex = mergedRules
+  .filter((r) => r.condition.regexFilter)
+  .map((r) => ({
+    re: new RegExp(r.condition.regexFilter, "i"),
+    domains: r.condition.requestDomains || null,
+  }));
+
+function check(name, got) {
+  got ? pass++ : fail++;
+  console.log(`${got ? "ok  " : "FAIL"}  ${name}`);
+}
+
+check(
+  "remote term blocks on google",
+  mergedRegex.some(
+    ({ re, domains }) =>
+      domainMatches(domains, "https://www.google.com/search?q=zzznewslang") &&
+      re.test("https://www.google.com/search?q=zzznewslang")
+  )
+);
+check(
+  "remote domain gets a block rule (no host permission needed)",
+  mergedRules.some(
+    (r) =>
+      r.condition.urlFilter === "||remote-example.com^" &&
+      r.action.type === "block"
+  )
+);
+check(
+  "baked-in domains still redirect to the block page",
+  mergedRules.some(
+    (r) =>
+      r.condition.urlFilter === "||myfitnesspal.com^" &&
+      r.action.type === "redirect"
+  )
+);
+check(
+  "rule ids stay unique after merge",
+  new Set(mergedRules.map((r) => r.id)).size === mergedRules.length
+);
+
 console.log(`\n${rules.length} rules (${regexRules.length} regex, max ${Math.max(...regexRules.map(r => r.condition.regexFilter.length))} chars)`);
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

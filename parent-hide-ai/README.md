@@ -15,7 +15,21 @@ Chrome extension (MV3) with two parental-control features:
 
 ## Search Guard
 
-Everything you would normally change lives in `config.js`:
+**Day-to-day term/domain updates don't touch this folder anymore.** Since
+v3.0.0 the extension fetches a remote blocklist from a parent-managed
+Cloudflare Worker every 30 minutes and merges it *on top of* the baked-in
+lists — so you add a term with one `curl` (see `server/README.md` in the repo
+root) and her browser picks it up within the half hour, no republish, no
+reload. Remote config is additive only: it can tighten blocking, never
+loosen it, and if the fetch fails the extension keeps its last good list.
+
+One asymmetry to know about: remotely-added **domains** are blocked with
+Chrome's plain network-error page instead of the friendly block page
+(redirects only work on hosts baked into the manifest). If a remotely-added
+domain proves permanent, fold it into `config.js` + `host_permissions` at the
+next store release to upgrade it to the nice block page.
+
+The baked-in defaults, and everything structural, still live in `config.js`:
 
 - `BLOCKED_TERMS` — keywords matched against search queries. Two forms:
 
@@ -28,8 +42,10 @@ Everything you would normally change lives in `config.js`:
 
 - `BLOCKED_DOMAINS` — whole sites blocked outright (calorie trackers, BMI calculators).
 - `SEARCH_ENGINES` — which sites and query parameters are watched.
-- `LOG_ATTEMPTS` / `LOG_LIMIT` — record blocked attempts locally, reviewable at `chrome://extensions` → Parent Hide AI → Extension options. Nothing leaves the device. See "The logging trade-off" below.
+- `LOG_ATTEMPTS` / `LOG_LIMIT` — record blocked attempts locally, reviewable at `chrome://extensions` → Parent Hide AI → Extension options. Nothing leaves the device via the extension. See "The logging trade-off" below.
+- `LOG_SEARCHES` / `SEARCH_LOG_LIMIT` — also record every search seen on the watched engines (blocked or not), same local-only storage, same options page. This is the "what got through" signal that tells you which terms to add next.
 - `SUPPORT_LINE` — optional support line shown on the block page.
+- `REMOTE_CONFIG_URL` / `REMOTE_REFRESH_MINUTES` — where and how often to fetch the remote blocklist.
 
 Reload the extension (`chrome://extensions` → reload) after changing `config.js`. `background.js` compiles it into dynamic declarativeNetRequest rules on install/startup; `query-guard.js` is the content-script backstop for sites (YouTube, Reddit, Pinterest, TikTok) that run searches through `pushState` without a page load.
 
@@ -86,9 +102,14 @@ Google changes their DOM frequently. If an AI Overview starts leaking through:
 - `hide.css` — static selectors for known AI UI elements
 - `query-guard.js` — pushState backstop for blocked searches on SPA sites
 - `blocked.html` / `blocked.js` — the block page (also writes the local log)
-- `options.html` / `options.js` — parent-facing log viewer
+- `options.html` / `options.js` — parent-facing log viewer (blocked attempts + recent searches, remote-list status, manual refresh)
 - `test.mjs` — offline test harness for the compiled rules
 - `icons/` — extension icons
+
+Two companion pieces live in the repo root, outside the extension:
+
+- `server/` — the Cloudflare Worker that serves the remote blocklist and receives nightly search digests (`server/README.md`: deploy, daily blocklist edits, reading logs)
+- `tools/digest/` — a launchd job for the child's Mac that uploads the local search log to the Worker nightly (`tools/digest/README.md`: install and management)
 
 ## The part the code doesn't do
 

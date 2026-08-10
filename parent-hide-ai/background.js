@@ -54,12 +54,83 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   }
 });
 
+// --- Search Guard: remote blocklist -----------------------------------------
+//
+// Remote config is DATA ONLY (never code) and strictly additive: it can add
+// terms and domains on top of config.js, never remove them. A failed or
+// malformed fetch degrades to the last good copy, and with no copy at all the
+// baked-in lists still apply.
+
+const REFRESH_ALARM = "sg-refresh";
+
+function sanitizeRemote(data) {
+  const MAX_TERMS = 1000;
+  const MAX_TERM_LEN = 80;
+  const MAX_DOMAINS = 500;
+
+  const terms = (Array.isArray(data?.terms) ? data.terms : [])
+    .filter((t) => typeof t === "string")
+    .map((t) => t.trim().toLowerCase())
+    .filter((t) => t && t.length <= MAX_TERM_LEN)
+    .slice(0, MAX_TERMS);
+
+  const domains = (Array.isArray(data?.domains) ? data.domains : [])
+    .filter((d) => typeof d === "string")
+    .map((d) =>
+      d.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "")
+    )
+    .filter((d) => /^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/.test(d))
+    .slice(0, MAX_DOMAINS);
+
+  return { version: data?.version ?? null, terms, domains };
+}
+
+async function refreshRemote() {
+  if (!cfg.REMOTE_CONFIG_URL) return;
+  try {
+    const res = await fetch(cfg.REMOTE_CONFIG_URL, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const remote = sanitizeRemote(await res.json());
+    await chrome.storage.local.set({
+      sg_remote: remote,
+      sg_remoteAt: Date.now(),
+      sg_remoteError: null,
+    });
+  } catch (e) {
+    // Keep the last good sg_remote; just record why the refresh failed.
+    await chrome.storage.local.set({
+      sg_remoteError: String(e?.message || e),
+    });
+  }
+}
+
+// Baked-in config plus whatever remote additions are cached in storage.
+async function mergedConfig() {
+  const { sg_remote } = await chrome.storage.local.get("sg_remote");
+  const terms = [...cfg.BLOCKED_TERMS];
+  const remoteDomains = [];
+  if (sg_remote) {
+    for (const t of sg_remote.terms) if (!terms.includes(t)) terms.push(t);
+    for (const d of sg_remote.domains) {
+      if (!cfg.BLOCKED_DOMAINS.includes(d) && !remoteDomains.includes(d)) {
+        remoteDomains.push(d);
+      }
+    }
+  }
+  return {
+    ...cfg,
+    BLOCKED_TERMS: terms,
+    REMOTE_BLOCKED_DOMAINS: remoteDomains,
+  };
+}
+
 // --- Search Guard: keyword and domain blocking ------------------------------
 
 const BLOCK_PAGE = chrome.runtime.getURL("blocked.html");
 
 async function install() {
-  const rules = buildRules(cfg, BLOCK_PAGE);
+  const merged = await mergedConfig();
+  const rules = buildRules(merged, BLOCK_PAGE);
 
   // updateDynamicRules is all-or-nothing: one bad rule and NOTHING installs.
   // If the bulk call fails, fall back to one-at-a-time so a single oversized
@@ -93,9 +164,10 @@ async function install() {
   // Content scripts can't import modules, so hand them what they need here.
   // Written even if DNR install failed — query-guard still works from this.
   await chrome.storage.local.set({
-    sg_pattern: cfg.BLOCKED_TERMS.filter(Boolean).map(termToPattern).join("|"),
+    sg_pattern: merged.BLOCKED_TERMS.filter(Boolean).map(termToPattern).join("|"),
     sg_engines: cfg.SEARCH_ENGINES.map((e) => e.param),
     sg_logging: cfg.LOG_ATTEMPTS,
+    sg_logSearches: cfg.LOG_SEARCHES,
     sg_logLimit: cfg.LOG_LIMIT,
     sg_support: cfg.SUPPORT_LINE,
     sg_ruleCount: installed,
@@ -105,13 +177,58 @@ async function install() {
   if (!error) console.info(`[Search Guard] ${rules.length} rules installed.`);
 }
 
-chrome.runtime.onInstalled.addListener(install);
-chrome.runtime.onStartup.addListener(install);
+async function refreshAndInstall() {
+  await refreshRemote();
+  await install();
+}
 
-// The service worker sleeps; this wakes it if the block page needs anything.
+function scheduleRefresh() {
+  if (!cfg.REMOTE_CONFIG_URL) return;
+  chrome.alarms.create(REFRESH_ALARM, {
+    periodInMinutes: Math.max(5, cfg.REMOTE_REFRESH_MINUTES || 30),
+  });
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  scheduleRefresh();
+  refreshAndInstall();
+});
+chrome.runtime.onStartup.addListener(() => {
+  scheduleRefresh();
+  refreshAndInstall();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === REFRESH_ALARM) refreshAndInstall();
+});
+
+// Observed-search log. Appends are funneled through the service worker and
+// chained so two tabs logging at once can't clobber each other's writes.
+let logChain = Promise.resolve();
+function appendSearchLog(entry) {
+  logChain = logChain
+    .then(async () => {
+      const { sg_searchLog = [] } = await chrome.storage.local.get("sg_searchLog");
+      sg_searchLog.push(entry);
+      const limit = cfg.SEARCH_LOG_LIMIT || 2000;
+      await chrome.storage.local.set({ sg_searchLog: sg_searchLog.slice(-limit) });
+    })
+    .catch(() => {});
+  return logChain;
+}
+
+// The service worker sleeps; messages wake it.
 chrome.runtime.onMessage.addListener((msg, _sender, respond) => {
   if (msg?.type === "sg:reinstall") {
-    install().then(() => respond({ ok: true }));
+    refreshAndInstall().then(() => respond({ ok: true }));
     return true;
+  }
+  if (msg?.type === "sg:query" && cfg.LOG_SEARCHES) {
+    appendSearchLog({
+      at: Date.now(),
+      host: String(msg.host || "").slice(0, 100),
+      q: String(msg.q || "").slice(0, 200),
+      blocked: Boolean(msg.blocked),
+    });
   }
 });

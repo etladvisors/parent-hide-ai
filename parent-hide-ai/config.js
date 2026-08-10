@@ -108,6 +108,30 @@ export const SEARCH_ENGINES = [
   { domains: ["instagram.com"], param: "q" },
 ];
 
+// Remote blocklist (optional). When set, the extension fetches this URL on a
+// schedule and adds its terms and domains ON TOP of the lists above — remote
+// config can only tighten blocking, never loosen it. The response must be JSON:
+//   { "version": 3, "terms": ["..."], "domains": ["..."] }
+// Deploy server/worker.js and put its /config URL here BEFORE zipping for the
+// store. Leave null to disable remote updates entirely.
+//
+// NOTE: remotely-added domains are blocked with a plain DNR "block" action
+// (Chrome's network-error page) rather than the friendly block page, because
+// redirect rules only fire on hosts listed in manifest.json host_permissions.
+export const REMOTE_CONFIG_URL =
+  "https://sg-config.parent-hide-ai.workers.dev/config";
+
+// How often to re-fetch the remote list, in minutes.
+export const REMOTE_REFRESH_MINUTES = 30;
+
+// Record every search seen on the watched engines (not just blocked ones) in
+// local extension storage, so a parent can review what got *through* the
+// filter. Local-only, capped, clearable from the options page.
+export const LOG_SEARCHES = true;
+
+// How many observed searches to keep before the oldest are dropped.
+export const SEARCH_LOG_LIMIT = 2000;
+
 // Record blocked attempts locally so you can review them at chrome://extensions
 // -> Search Guard -> Extension options. Set to false for no logging at all.
 // Read the README section on this before you turn it on — it is a real

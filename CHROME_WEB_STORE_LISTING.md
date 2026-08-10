@@ -39,9 +39,10 @@ How it works:
 - Uses the webNavigation API to handle in-page navigation events that bypass network-level rules
 
 Privacy:
-- This extension does not transmit any data off the device
-- It does not use analytics, tracking, or remote servers
-- Blocked search attempts may be recorded locally on the device (only there) so a parent can review them from the options page; this can be disabled and cleared
+- This extension does not transmit any personal data or browsing data off the device
+- It does not use analytics or tracking
+- It may periodically download the parent's current blocklist (configuration data only, never code) from a parent-managed server, so the parent can update the filter without republishing; this request carries no user data
+- Blocked search attempts, and searches on the supported sites, may be recorded locally on the device (only there) so a parent can review them from the options page; this can be disabled and cleared
 - The extension only runs on the specific sites listed in its permissions
 ```
 
@@ -94,7 +95,13 @@ Used to detect in-page (single-page application) navigations that do not trigger
 #### `storage`
 
 ```
-Used to pass the compiled keyword pattern from the service worker to the content script, and to optionally record blocked search attempts locally on the device so a parent can review them from the options page. Nothing is transmitted anywhere; the log is capped and can be disabled or cleared.
+Used to pass the compiled keyword pattern from the service worker to the content script, to cache the parent's downloaded blocklist configuration, and to optionally record blocked search attempts and searches on the supported sites locally on the device so a parent can review them from the options page. The extension transmits none of this anywhere; the logs are capped and can be disabled or cleared.
+```
+
+#### `alarms`
+
+```
+Used to periodically re-download the parent-managed blocklist configuration (a small JSON file of keywords and sites — data only, never code) so the parent can update the filter without republishing the extension. The request sends no user data.
 ```
 
 #### Host permissions (explicit list of search/social sites and blocked sites)
@@ -107,7 +114,7 @@ Required so that the extension's content scripts and declarativeNetRequest rules
 
 > In the Privacy Practices tab, you must certify data use. Blocked search queries are stored locally and never transmitted, so the safe/honest disclosure is:
 
-- **Web history / User activity:** disclosed as collected (stored locally on the device only, never sold or transferred; used solely for the extension's single purpose — parental review of blocked attempts)
+- **Web history / User activity:** disclosed as collected (stored locally on the device only, never transmitted by the extension, never sold or transferred; used solely for the extension's single purpose — parental review of blocked attempts and searches)
 - Certify compliance with the Chrome Web Store Developer Program Policies
 - Certify: data is not sold to third parties, not used or transferred for purposes unrelated to the single purpose, and not used or transferred to determine creditworthiness or for lending
 
@@ -180,9 +187,11 @@ Before submitting, verify:
 - [ ] 128x128 icon is uploaded as the store icon
 - [ ] Description does not reference "blocking" or "removing" other companies' features in a way that implies malice — use neutral language like "hides," "removes from view," "redirects"
 - [ ] No mention of circumventing or bypassing security/safety features (this is a content preference tool, not a circumvention tool)
-- [ ] `manifest.json` version field is set (currently `2.0.0`)
-- [ ] Data use disclosure reflects the local-only log of blocked search attempts
-- [ ] Note: v2 adds permissions (`storage` + more hosts). Chrome disables the extension on existing installs until the new permissions are accepted — plan to re-approve it on the child's device after the update ships
+- [ ] `manifest.json` version field is set (currently `3.0.0`)
+- [ ] Data use disclosure reflects the local-only logs (blocked attempts + observed searches)
+- [ ] **Before zipping v3:** deploy `server/worker.js` and set `REMOTE_CONFIG_URL` in `config.js` to its `/config` URL — publishing with `null` means remote updates stay off until the next store review
+- [ ] Note: v3 adds only the `alarms` permission, which generates no warning — existing installs are NOT disabled by this update and no re-approval on the child's device is needed
+- [ ] If asked about the remote fetch in review: it downloads configuration data (a JSON keyword/site list) only, never code, and sends no user data — this is permitted under the remotely-hosted-code policy
 
 ---
 
