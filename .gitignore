@@ -2,3 +2,8 @@ node_modules/
 *.zip
 .DS_Store
 _metadata/
+
+# per-machine digest-tool files (contain the LOG_KEY / sync cursor)
+tools/digest/config.json
+tools/digest/state.json
+tools/digest/*.log

@@ -1,0 +1,7 @@
+name = "sg-config"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[[kv_namespaces]]
+binding = "SG_KV"
+id = "8b28675060c74eeba5abfa87a8bf1ff1"

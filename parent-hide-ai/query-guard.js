@@ -7,15 +7,29 @@
 // ---------------------------------------------------------------------------
 
 (async () => {
-  const { sg_pattern, sg_engines } = await chrome.storage.local.get([
-    "sg_pattern",
-    "sg_engines",
-  ]);
+  const { sg_pattern, sg_engines, sg_logSearches } =
+    await chrome.storage.local.get(["sg_pattern", "sg_engines", "sg_logSearches"]);
   if (!sg_pattern) return;
 
   const matcher = new RegExp(sg_pattern, "i");
   const params = new Set(sg_engines || ["q"]);
   const blockPage = chrome.runtime.getURL("blocked.html");
+
+  // Report each distinct query to the service worker's local log. Searches
+  // blocked at the network layer never reach this script — those are logged
+  // by blocked.html — so this captures what got THROUGH the filter.
+  let lastReported = null;
+  function report(query, blocked) {
+    if (!sg_logSearches || query === lastReported) return;
+    lastReported = query;
+    try {
+      chrome.runtime
+        .sendMessage({ type: "sg:query", q: query, host: location.hostname, blocked })
+        .catch(() => {});
+    } catch {
+      // Extension reloaded out from under us — nothing to do.
+    }
+  }
 
   function queryOf(url) {
     const search = new URL(url).searchParams;
@@ -34,7 +48,10 @@
     } catch {
       return;
     }
-    if (query && matcher.test(query)) {
+    if (!query) return;
+    const blocked = matcher.test(query);
+    report(query, blocked);
+    if (blocked) {
       location.replace(
         `${blockPage}?reason=term&q=${encodeURIComponent(query)}`
       );
