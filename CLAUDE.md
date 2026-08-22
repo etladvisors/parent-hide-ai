@@ -26,7 +26,7 @@ Chrome extension (Manifest V3) with two parental-control features:
    - MutationObserver catches lazy-loaded AI content
    - Text-pattern matching for elements with dynamic class names
 
-### Search Guard (two layers + remote config)
+### Search Guard (two layers + remote config + log upload)
 
 1. **Dynamic Declarative Net Request rules** - `background.js` compiles `config.js`
    (terms, domains, engines) into dynamic DNR redirect rules via
@@ -48,10 +48,19 @@ Chrome extension (Manifest V3) with two parental-control features:
    actions, not redirects — redirect rules silently don't fire on hosts
    missing from `host_permissions`, block rules work everywhere. Backend is
    `server/worker.js` (Cloudflare Worker + KV; see `server/README.md`).
-   `tools/digest/` is a launchd job for the child's Mac that reads the local
-   logs from Chrome's LevelDB on disk and uploads a nightly digest to the
-   Worker — the extension itself transmits nothing (keeps the CWS
-   data-disclosure posture "local-only").
+4. **Log upload (v3.1)** - the service worker POSTs new log entries to
+   `LOG_UPLOAD_URL` (the Worker's `/log`) on the same alarm as the blocklist
+   refresh. Batching/cursor logic is in `upload.js` (`planUpload`, unit-tested
+   by `tests/upload.test.mjs`); the bearer token is read at runtime from
+   `upload-key.json` (fetch, not import — dynamic import is illegal in a service
+   worker), which is **gitignored**; a missing file means uploading is off, not
+   an error.
+   Reaches the Worker via CORS, deliberately **not** a host permission, so
+   updates install silently. `tools/digest/` is the older launchd job for a
+   **Mac**; it cannot run on ChromeOS (no launchd, and the Chrome profile sits
+   in an encrypted partition), which is why the upload moved in-extension.
+   **The extension now transmits data** — `PRIVACY_POLICY.md` and the CWS
+   Privacy Practices tab must stay consistent with `LOG_UPLOAD_URL`.
 
 Static and dynamic DNR rules live in separate namespaces; no ID coordination is needed between `rules.json` and the compiled rules.
 
@@ -67,6 +76,8 @@ Static and dynamic DNR rules live in separate namespaces; no ID coordination is 
 - `query-guard.js` - Search Guard SPA backstop
 - `blocked.html` / `blocked.js` - Block page + local logging
 - `options.html` / `options.js` - Parent-facing log viewer (blocked attempts + recent searches) with remote-list status and manual refresh
+- `upload.js` - Log-upload batching (`planUpload`); pure, no chrome.* or network
+- `upload-key.json` - **Gitignored.** Holds the Worker LOG_KEY; template in `upload-key.example.json`
 - `test.mjs` - Offline harness for compiled Search Guard rules
 - `server/` - Cloudflare Worker: serves the remote blocklist (`GET/PUT /config`), receives nightly digests (`POST /log`, `GET /logs`)
 - `tools/digest/` - launchd job for the child's Mac: uploads the local logs to the Worker nightly
@@ -82,6 +93,9 @@ Test URLs:
 - `https://www.google.com/search?q=test&udm=50` - should redirect to remove `udm=50`
 - `https://www.google.com/aimode?q=test` - should redirect to `/search`
 - `https://www.google.com/search?q=thinspo` - should redirect to the block page
+
+Run `npm run test:upload` after touching `upload.js` — the cursor is a single
+watermark across both logs, and getting it wrong silently drops entries.
 
 Run `npm run test:rules` after any `config.js` change — it checks both block and allow cases (false positives matter as much as misses).
 

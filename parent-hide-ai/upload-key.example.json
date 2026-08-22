@@ -1,0 +1,4 @@
+{
+  "_comment": "Copy to upload-key.json and put the Worker's LOG_KEY in `key`. upload-key.json is gitignored (this repo is public). It DOES ship inside the store package - the extension needs it at runtime - so treat it as a low-value, rotatable credential: it can only APPEND log entries. Reading logs and editing the blocklist need ADMIN_KEY, which never leaves your machine. Rotate with `wrangler secret put LOG_KEY` in server/, then update this file and republish. If upload-key.json is absent, uploading is simply off; the extension still filters and still logs locally.",
+  "key": ""
+}

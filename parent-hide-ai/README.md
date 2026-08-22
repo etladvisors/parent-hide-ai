@@ -45,6 +45,8 @@ The baked-in defaults, and everything structural, still live in `config.js`:
 - `LOG_ATTEMPTS` / `LOG_LIMIT` — record blocked attempts locally, reviewable at `chrome://extensions` → Parent Hide AI → Extension options. Nothing leaves the device via the extension. See "The logging trade-off" below.
 - `LOG_SEARCHES` / `SEARCH_LOG_LIMIT` — also record every search seen on the watched engines (blocked or not), same local-only storage, same options page. This is the "what got through" signal that tells you which terms to add next.
 - `SUPPORT_LINE` — optional support line shown on the block page.
+- `LOG_UPLOAD_URL` / `DEVICE_LABEL` — where the logs get uploaded, and how this
+  device is labelled in them. Set `LOG_UPLOAD_URL` to null for local-only.
 - `REMOTE_CONFIG_URL` / `REMOTE_REFRESH_MINUTES` — where and how often to fetch the remote blocklist.
 
 Reload the extension (`chrome://extensions` → reload) after changing `config.js`. `background.js` compiles it into dynamic declarativeNetRequest rules on install/startup; `query-guard.js` is the content-script backstop for sites (YouTube, Reddit, Pinterest, TikTok) that run searches through `pushState` without a page load.
@@ -62,6 +64,36 @@ Add your own cases to the `tests` array in `test.mjs` — especially *allow* cas
 ### On the pro-ED vocabulary
 
 The community terms in `config.js` were current when this was written. That vocabulary rotates deliberately and fast, precisely because platforms block it. Treat the list as something you revisit, not something you set once.
+
+### Getting the logs off the device
+
+Since v3.1.0 the extension uploads its own logs. Every refresh cycle it POSTs
+new entries to `LOG_UPLOAD_URL` (the Worker's `/log`), and you read them back
+with `GET /logs` — see `server/README.md`. The bearer token lives in
+`upload-key.json`, which is **gitignored** because this repo is public; copy
+`upload-key.example.json` and fill it in before zipping, or the shipped build
+will never upload.
+
+This exists because of ChromeOS. `tools/digest/` reads Chrome's extension
+LevelDB off disk and is scheduled by launchd — neither of which exists on a
+Chromebook, where the profile lives in an encrypted partition no user process
+can open. The only place a Chromebook's logs can be read from is inside the
+browser, so the extension does it.
+
+Consequences worth knowing:
+
+- **The extension now transmits data.** `PRIVACY_POLICY.md` and the store's
+  Privacy Practices tab say so, and must keep saying so. Setting
+  `LOG_UPLOAD_URL` to null reverts to local-only — change the disclosures back
+  if you do.
+- **The `LOG_KEY` ships inside the package.** Anyone who unpacks the CRX can
+  read it. It can only *append* log entries; reading logs and editing the
+  blocklist need `ADMIN_KEY`, which never leaves your machine. Rotate with
+  `wrangler secret put LOG_KEY`.
+- **Uploads are batched and cursor-tracked.** A failed upload doesn't advance
+  the cursor, so entries retry rather than vanish. But "Clear this list" on the
+  options page deletes entries whether or not they were uploaded.
+- Upload status shows on the options page, under the block-list line.
 
 ### The logging trade-off
 
@@ -108,8 +140,8 @@ Google changes their DOM frequently. If an AI Overview starts leaking through:
 
 Two companion pieces live in the repo root, outside the extension:
 
-- `server/` — the Cloudflare Worker that serves the remote blocklist and receives nightly search digests (`server/README.md`: deploy, daily blocklist edits, reading logs)
-- `tools/digest/` — a launchd job for the child's Mac that uploads the local search log to the Worker nightly (`tools/digest/README.md`: install and management)
+- `server/` — the Cloudflare Worker that serves the remote blocklist and receives the search digests (`server/README.md`: deploy, daily blocklist edits, reading logs)
+- `tools/digest/` — a launchd job for a **Mac**. It is not needed on a Chromebook and cannot run there; see "Getting the logs off the device" below.
 
 ## The part the code doesn't do
 

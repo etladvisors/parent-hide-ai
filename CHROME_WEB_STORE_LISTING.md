@@ -39,10 +39,10 @@ How it works:
 - Uses the webNavigation API to handle in-page navigation events that bypass network-level rules
 
 Privacy:
-- This extension does not transmit any personal data or browsing data off the device
-- It does not use analytics or tracking
-- It may periodically download the parent's current blocklist (configuration data only, never code) from a parent-managed server, so the parent can update the filter without republishing; this request carries no user data
-- Blocked search attempts, and searches on the supported sites, may be recorded locally on the device (only there) so a parent can review them from the options page; this can be disabled and cleared
+- It does not use analytics or tracking, and shares nothing with third parties
+- It periodically downloads the parent's current blocklist (configuration data only, never code) from a parent-managed server, so the parent can update the filter without republishing; this request carries no user data
+- Blocked search attempts, and searches on the supported sites, are recorded so a parent can review them from the options page; this can be disabled and cleared
+- Those records are also sent, on a schedule, to a server operated by the installing parent, so a parent can review activity without physical access to the device; nothing else is transmitted, and nothing goes to any other party
 - The extension only runs on the specific sites listed in its permissions
 ```
 
@@ -95,13 +95,13 @@ Used to detect in-page (single-page application) navigations that do not trigger
 #### `storage`
 
 ```
-Used to pass the compiled keyword pattern from the service worker to the content script, to cache the parent's downloaded blocklist configuration, and to optionally record blocked search attempts and searches on the supported sites locally on the device so a parent can review them from the options page. The extension transmits none of this anywhere; the logs are capped and can be disabled or cleared.
+Used to pass the compiled keyword pattern from the service worker to the content script, to cache the parent's downloaded blocklist configuration, and to record blocked search attempts and searches on the supported sites so a parent can review them from the options page. The logs are capped and can be disabled or cleared. They are also uploaded on a schedule to the installing parent's own server so the parent can review them remotely — the extension is a parental supervision tool installed on a device the parent administers, and on ChromeOS there is no other way for a parent to read these records.
 ```
 
 #### `alarms`
 
 ```
-Used to periodically re-download the parent-managed blocklist configuration (a small JSON file of keywords and sites — data only, never code) so the parent can update the filter without republishing the extension. The request sends no user data.
+Used to periodically re-download the parent-managed blocklist configuration (a small JSON file of keywords and sites — data only, never code) so the parent can update the filter without republishing the extension, and on the same schedule to upload the extension's blocked-attempt and search records to the installing parent's own server for parental review.
 ```
 
 #### Host permissions (explicit list of search/social sites and blocked sites)
@@ -112,9 +112,10 @@ Required so that the extension's content scripts and declarativeNetRequest rules
 
 ### Data Use Disclosures
 
-> In the Privacy Practices tab, you must certify data use. Blocked search queries are stored locally and never transmitted, so the safe/honest disclosure is:
+> In the Privacy Practices tab, you must certify data use. **As of v3.1.0 the extension transmits search records to the installing parent's server, so this MUST be disclosed as collected and transferred.** Declaring "no data collected" would be false and is grounds for takedown.
 
-- **Web history / User activity:** disclosed as collected (stored locally on the device only, never transmitted by the extension, never sold or transferred; used solely for the extension's single purpose — parental review of blocked attempts and searches)
+- **Web history / User activity:** disclosed as **collected AND transferred**. Scope: blocked search queries and searches observed on the supported sites, with the site and a timestamp. Destination: a private server operated by the parent who installed the extension, configured by that parent; retained 90 days. Purpose: the extension's single purpose — parental supervision of a minor's search activity on a device the parent administers. Not sold, not shared with any third party, not used for advertising, creditworthiness, or any unrelated purpose.
+- Nothing else is transmitted: no page content, no cookies or credentials, no form data, no browsing outside the supported search sites, no account identifiers.
 - Certify compliance with the Chrome Web Store Developer Program Policies
 - Certify: data is not sold to third parties, not used or transferred for purposes unrelated to the single purpose, and not used or transferred to determine creditworthiness or for lending
 
@@ -124,7 +125,7 @@ Required so that the extension's content scripts and declarativeNetRequest rules
 
 > Required if you declare any permissions. For an unlisted personal-use extension, a simple inline policy is fine. You can host this as a GitHub Gist or paste it into a simple web page.
 
-> The current policy text lives in `PRIVACY_POLICY.md` in the repo root — keep the hosted copy in sync with it. It covers both the AI hiding and the local-only logging of blocked search attempts.
+> The current policy text lives in `PRIVACY_POLICY.md` in the repo root — keep the hosted copy in sync with it. It covers the AI hiding, the logging of blocked attempts and searches, and the upload of those records to the parent's server. **If you change `LOG_UPLOAD_URL` in `config.js`, the policy and the Privacy Practices tab must change with it.**
 
 > **Privacy policy URL for the store listing:**
 > ```
@@ -182,15 +183,18 @@ Before submitting, verify:
 - [ ] Privacy policy is hosted at a public URL and linked in the listing
 - [ ] Single purpose description is filled in and matches what the extension actually does
 - [ ] All permission justifications are filled in
-- [ ] Data use disclosure is completed (answer: no data collected)
+- [ ] Data use disclosure is completed (answer: **web history / user activity, collected AND transferred** — see below; "no data collected" is no longer true)
 - [ ] At least 1 screenshot (1280x800 or 640x400) is uploaded
 - [ ] 128x128 icon is uploaded as the store icon
 - [ ] Description does not reference "blocking" or "removing" other companies' features in a way that implies malice — use neutral language like "hides," "removes from view," "redirects"
 - [ ] No mention of circumventing or bypassing security/safety features (this is a content preference tool, not a circumvention tool)
-- [ ] `manifest.json` version field is set (currently `3.0.0`)
-- [ ] Data use disclosure reflects the local-only logs (blocked attempts + observed searches)
+- [ ] `manifest.json` version field is set (currently `3.1.0`)
+- [ ] Data use disclosure reflects the upload (blocked attempts + observed searches leave the device as of v3.1.0)
+- [ ] **Before zipping v3.1:** `parent-hide-ai/upload-key.json` exists and holds the Worker's LOG_KEY — it is gitignored, so a fresh clone will not have it, and without it the extension silently never uploads
+- [ ] Hosted privacy policy re-published from the updated `PRIVACY_POLICY.md`
 - [ ] **Before zipping v3:** deploy `server/worker.js` and set `REMOTE_CONFIG_URL` in `config.js` to its `/config` URL — publishing with `null` means remote updates stay off until the next store review
 - [ ] Note: v3 adds only the `alarms` permission, which generates no warning — existing installs are NOT disabled by this update and no re-approval on the child's device is needed
+- [ ] Note: v3.1 adds **no** new permissions. The upload endpoint is reached via CORS rather than a host permission, deliberately, so the update installs silently — verified by `npm run test:smoke`
 - [ ] If asked about the remote fetch in review: it downloads configuration data (a JSON keyword/site list) only, never code, and sends no user data — this is permitted under the remotely-hosted-code policy
 
 ---
@@ -203,7 +207,8 @@ Before submitting, verify:
 | Unjustified permissions | Each permission has a detailed justification tied to specific functionality |
 | Missing privacy policy | Privacy policy provided and hosted at a public URL |
 | "Broad host permissions" flag | Host permissions are an explicit list of the filtered sites, not `<all_urls>` |
-| Data use disclosure missing | Completed; local-only log disclosed, nothing transmitted |
+| Data use disclosure missing | Completed; the search-record upload to the parent's own server is disclosed as collected and transferred, with scope, destination, retention, and purpose stated |
+| Undisclosed data collection | The upload is declared in the listing copy, the permission justifications, the Privacy Practices tab, and the hosted privacy policy — all four must agree |
 | Extension modifies search results | Clearly framed as a parental control / content filtering tool, not an ad blocker or SEO manipulation tool |
 | Keyword spam (rejected once, ref "Yellow Argon", Jul 2026) | Do NOT enumerate brand names (Bing, YouTube, TikTok, …) anywhere in the listing text — say "supported search engines and social platforms" and let the manifest's host_permissions be the authoritative list |
 | No screenshots | Screenshots provided showing the extension's effect |

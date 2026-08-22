@@ -14,6 +14,8 @@ async function render() {
     sg_remote,
     sg_remoteAt,
     sg_remoteError,
+    sg_uploadedAt,
+    sg_uploadError,
   } = await chrome.storage.local.get([
     "sg_log",
     "sg_searchLog",
@@ -22,6 +24,8 @@ async function render() {
     "sg_remote",
     "sg_remoteAt",
     "sg_remoteError",
+    "sg_uploadedAt",
+    "sg_uploadError",
   ]);
 
   const active = await chrome.declarativeNetRequest.getDynamicRules();
@@ -42,6 +46,17 @@ async function render() {
     remoteLine = "Remote block list is not configured.";
   }
   document.getElementById("remote").textContent = remoteLine;
+
+  let uploadLine;
+  if (sg_uploadError) {
+    uploadLine = `Upload to the parent server is failing: ${sg_uploadError}` +
+      (sg_uploadedAt ? ` Last success ${fmt.format(new Date(sg_uploadedAt))}.` : "");
+  } else if (sg_uploadedAt) {
+    uploadLine = `Logs uploaded to the parent server ${fmt.format(new Date(sg_uploadedAt))}.`;
+  } else {
+    uploadLine = "Logs have not been uploaded to the parent server yet.";
+  }
+  document.getElementById("upload").textContent = uploadLine;
 
   function renderRows(boxId, entries, emptyText, valueOf) {
     const box = document.getElementById(boxId);

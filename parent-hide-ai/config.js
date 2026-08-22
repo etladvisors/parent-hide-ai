@@ -124,6 +124,24 @@ export const REMOTE_CONFIG_URL =
 // How often to re-fetch the remote list, in minutes.
 export const REMOTE_REFRESH_MINUTES = 30;
 
+// Log upload (optional). When set, the extension POSTs new local log entries
+// to this URL on the same schedule as the blocklist refresh, so a parent can
+// review them without physical access to the device. This is what replaced
+// tools/digest/ for ChromeOS, where no launchd-style job can run.
+//
+// The bearer token lives in upload-key.js (gitignored, copied from
+// upload-key.example.js) — without that file, uploading stays off.
+//
+// TURNING THIS ON MEANS THE EXTENSION TRANSMITS BROWSING ACTIVITY. The store
+// listing's data disclosure and PRIVACY_POLICY.md must say so. Set to null to
+// go back to local-only.
+export const LOG_UPLOAD_URL =
+  "https://sg-config.parent-hide-ai.workers.dev/log";
+
+// Which device the uploaded entries came from. Shows up as `machine` in
+// GET /logs, alongside anything tools/digest/ uploads from a Mac.
+export const DEVICE_LABEL = "chromebook";
+
 // Record every search seen on the watched engines (not just blocked ones) in
 // local extension storage, so a parent can review what got *through* the
 // filter. Local-only, capped, clearable from the options page.

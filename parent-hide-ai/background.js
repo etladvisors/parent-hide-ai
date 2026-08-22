@@ -11,6 +11,7 @@
 
 import * as cfg from "./config.js";
 import { buildRules, termToPattern } from "./rules/compile.js";
+import { planUpload } from "./upload.js";
 
 // --- AI Mode backstop -------------------------------------------------------
 
@@ -124,6 +125,92 @@ async function mergedConfig() {
   };
 }
 
+// --- Search Guard: log upload -----------------------------------------------
+//
+// ChromeOS has no launchd and no reachable path to Chrome's on-disk extension
+// storage, so tools/digest/ cannot run there. Instead the service worker
+// pushes new log entries to the same Worker endpoint (POST /log) that the Mac
+// digest job uses, in the same wire format, on the blocklist-refresh alarm.
+//
+// The Worker answers OPTIONS with permissive CORS, so this needs no extra
+// host permission — which matters: adding one would land the update DISABLED
+// until someone re-accepts it on the device.
+
+// The key lives in its own file so it can be gitignored (this repo is public).
+// It is read with fetch() rather than import(): dynamic import is disallowed
+// inside a service worker, and a static import of a gitignored file would kill
+// the whole worker whenever the file is absent. A missing file is not an
+// error here — uploading is simply off.
+async function uploadKey() {
+  try {
+    const res = await fetch(chrome.runtime.getURL("upload-key.json"));
+    if (!res.ok) return null;
+    const { key } = await res.json();
+    return typeof key === "string" && key.trim() ? key.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+async function uploadLogs() {
+  if (!cfg.LOG_UPLOAD_URL) return;
+
+  const key = await uploadKey();
+  if (!key) {
+    await chrome.storage.local.set({
+      sg_uploadError: "no upload key bundled (see upload-key.example.json)",
+    });
+    return;
+  }
+
+  const {
+    sg_log = [],
+    sg_searchLog = [],
+    sg_uploadCursor = 0,
+  } = await chrome.storage.local.get(["sg_log", "sg_searchLog", "sg_uploadCursor"]);
+
+  const batch = planUpload({
+    blocked: sg_log,
+    searches: sg_searchLog,
+    since: sg_uploadCursor,
+  });
+  if (!batch.blocked.length && !batch.searches.length) {
+    await chrome.storage.local.set({ sg_uploadError: null });
+    return;
+  }
+
+  try {
+    const res = await fetch(cfg.LOG_UPLOAD_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        date: new Date().toISOString().slice(0, 10),
+        machine: cfg.DEVICE_LABEL || "chromebook",
+        profile: "extension",
+        blocked: batch.blocked,
+        searches: batch.searches,
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    // Advance only on success, so a failed batch is retried whole rather than
+    // silently skipped. Entries stay in local storage either way.
+    await chrome.storage.local.set({
+      sg_uploadCursor: batch.cursor,
+      sg_uploadedAt: Date.now(),
+      sg_uploadError: null,
+    });
+    if (batch.remaining) {
+      console.info(`[Search Guard] ${batch.remaining} entries left for the next run.`);
+    }
+  } catch (e) {
+    await chrome.storage.local.set({ sg_uploadError: String(e?.message || e) });
+  }
+}
+
 // --- Search Guard: keyword and domain blocking ------------------------------
 
 const BLOCK_PAGE = chrome.runtime.getURL("blocked.html");
@@ -180,10 +267,11 @@ async function install() {
 async function refreshAndInstall() {
   await refreshRemote();
   await install();
+  await uploadLogs();
 }
 
 function scheduleRefresh() {
-  if (!cfg.REMOTE_CONFIG_URL) return;
+  if (!cfg.REMOTE_CONFIG_URL && !cfg.LOG_UPLOAD_URL) return;
   chrome.alarms.create(REFRESH_ALARM, {
     periodInMinutes: Math.max(5, cfg.REMOTE_REFRESH_MINUTES || 30),
   });

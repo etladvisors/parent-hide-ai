@@ -7,3 +7,6 @@ _metadata/
 tools/digest/config.json
 tools/digest/state.json
 tools/digest/*.log
+
+# holds the Worker LOG_KEY; ships in the zip, never in git (public repo)
+parent-hide-ai/upload-key.json
