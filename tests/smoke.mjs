@@ -139,6 +139,31 @@ const cases = [
   ["udm=50 strip (q first)", "https://www.google.com/search?q=zebra&udm=50", (u) => !u.includes("udm=50")],
   ["udm=50 strip (udm first)", "https://www.google.com/search?udm=50&q=zebra", (u) => !u.includes("udm=50")],
   ["aimode redirect", "https://www.google.com/aimode?q=zebra", (u) => !u.includes("aimode")],
+
+  // --- image search: every door, on every watched engine -------------------
+  ["images: google udm=2", "https://www.google.com/search?q=zebra&udm=2", (u) => u.includes("reason=images")],
+  ["images: google udm=2 first", "https://www.google.com/search?udm=2&q=zebra", (u) => u.includes("reason=images")],
+  ["images: google legacy tbm=isch", "https://www.google.com/search?q=zebra&tbm=isch", (u) => u.includes("reason=images")],
+  ["images: google imghp", "https://www.google.com/imghp", (u) => u.includes("reason=images")],
+  ["images: images.google.com", "https://images.google.com/", (u) => u.includes("reason=images")],
+  ["images: google lens", "https://lens.google.com/", (u) => u.includes("reason=images")],
+  ["images: google.co.uk", "https://www.google.co.uk/search?q=zebra&udm=2", (u) => u.includes("reason=images")],
+  ["images: bing", "https://www.bing.com/images/search?q=zebra", (u) => u.includes("reason=images")],
+  ["images: duckduckgo", "https://duckduckgo.com/?q=zebra&iax=images&ia=images", (u) => u.includes("reason=images")],
+  ["images: yahoo", "https://images.search.yahoo.com/search/images?p=zebra", (u) => u.includes("reason=images")],
+  ["images: brave", "https://search.brave.com/images?q=zebra", (u) => u.includes("reason=images")],
+  ["images: ecosia", "https://www.ecosia.org/images?q=zebra", (u) => u.includes("reason=images")],
+
+  // --- the blast radius: none of this may touch non-search Google ----------
+  // Regressions here would break image rendering in Gmail / Docs / Calendar,
+  // which is the whole reason the rules match main_frame on exact hosts.
+  ["allow gmail", "https://mail.google.com/", (u) => !u.includes("blocked.html")],
+  ["allow docs", "https://docs.google.com/", (u) => !u.includes("blocked.html")],
+  ["allow calendar", "https://calendar.google.com/", (u) => !u.includes("blocked.html")],
+  ["allow google drive", "https://drive.google.com/", (u) => !u.includes("blocked.html")],
+  ["allow user content host", "https://lh3.googleusercontent.com/", (u) => !u.includes("blocked.html")],
+  ["allow ordinary web search", "https://www.bing.com/search?q=zebra+facts", (u) => !u.includes("blocked.html")],
+  ["allow udm=25 (not the images tab)", "https://www.bing.com/search?q=zebra&udm=25", (u) => !u.includes("blocked.html")],
 ];
 
 for (const [name, url, ok] of cases) {

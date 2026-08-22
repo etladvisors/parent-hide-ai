@@ -13,6 +13,31 @@ Chrome extension (MV3) with two parental-control features:
 4. **Hides the "AI Mode" tab** in the search-type toolbar (All / Images / Videos / AI Mode).
 5. **Hides the AI Mode button** on the google.com homepage.
 
+## Image search
+
+All image search is blocked, on every engine the extension watches — Google's
+Images tab (`udm=2`, legacy `tbm=isch`, `/imghp`, `images.google.*`), Google
+Lens (which is where right-click "Search image with Google" goes), and the
+image paths on the other supported engines. Blocked URLs land on the block
+page with wording that says image search specifically is off, rather than
+implying the query was on a list.
+
+This is deliberately a *surface* block rather than a keyword one: the case it
+exists for is searching an ordinary name and then browsing images, which no
+keyword list can enumerate.
+
+Rules live in `rules.json` (ids 3-12) plus `isImageSearch()` in
+`background.js`, which catches the Images tab being clicked on a results page —
+a pushState navigation the network rules never see.
+
+**It does not affect images anywhere else.** The rules match top-level
+navigations on exact search hosts, so images in Gmail, Calendar, Docs, Drive
+and anything served from `googleusercontent.com` render normally. `smoke.mjs`
+asserts this explicitly; if you edit these rules, keep those allow cases.
+
+What it doesn't reach: thumbnails in ordinary web results and knowledge panels,
+and image-heavy social sites, which are filtered by keyword only.
+
 ## Search Guard
 
 **Day-to-day term/domain updates don't touch this folder anymore.** Since
