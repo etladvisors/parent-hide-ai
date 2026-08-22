@@ -7,7 +7,9 @@
     "test:smoke": "node tests/smoke.mjs",
     "test:ci": "npx playwright test --grep @ci",
     "test:baseline": "npx playwright test tests/baseline.spec.ts",
-    "test:monitor": "npx playwright test tests/baseline.spec.ts tests/ai-hiding.spec.ts"
+    "test:monitor": "npx playwright test tests/baseline.spec.ts tests/ai-hiding.spec.ts",
+    "test:upload": "node tests/upload.test.mjs",
+    "test:upload:e2e": "node tests/upload-e2e.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0"

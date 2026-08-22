@@ -1,4 +1,14 @@
-# sg-digest — nightly search-log uploader
+# sg-digest — nightly search-log uploader (macOS only, now optional)
+
+> **Not needed on a Chromebook, and cannot run there.** ChromeOS has no
+> launchd, and Chrome's extension storage sits in an encrypted user partition
+> that no user process — including anything in the Linux dev environment — can
+> read. Since extension v3.1.0 the service worker uploads its own logs to the
+> same `POST /log` endpoint, in the same wire format, on every platform. Use
+> this job only if you also want logs from a Mac, or prefer the extension not
+> to transmit (set `LOG_UPLOAD_URL` to null and let this job do it instead).
+> Running both at once is safe: they keep separate cursors, and entries are
+> tagged by `machine`.
 
 Runs on the **child's Mac**, under the **child's macOS user account**. Once a
 night it reads Search Guard's local logs (blocked attempts + observed

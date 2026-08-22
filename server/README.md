@@ -1,7 +1,8 @@
 # Search Guard config server
 
 A single Cloudflare Worker (free tier) that serves the remote blocklist to the
-extension and receives the nightly search digest from the launchd job.
+extension and receives search digests — from the extension itself (every refresh cycle,
+on any platform) and, on a Mac, optionally from the `tools/digest/` launchd job.
 
 ## One-time deploy
 
@@ -19,8 +20,13 @@ Then:
 
 1. Put `https://<worker-url>/config` into `REMOTE_CONFIG_URL` in
    `parent-hide-ai/config.js` **before** zipping the extension for the store.
-2. Put the same base URL and the `LOG_KEY` into `tools/digest/config.json` on
-   the child's machine.
+2. Put `https://<worker-url>/log` into `LOG_UPLOAD_URL` in
+   `parent-hide-ai/config.js`, and the `LOG_KEY` into
+   `parent-hide-ai/upload-key.json` (copy `upload-key.example.json`; it is
+   gitignored because this repo is public). Without that file the shipped
+   extension never uploads.
+3. Only if you are also using the Mac digest job: put the same base URL and
+   `LOG_KEY` into `tools/digest/config.json` on that machine.
 
 ## Updating the blocklist (your daily edit)
 
@@ -50,6 +56,10 @@ Remote **terms** use the same term syntax as `config.js` (substring by
 default, `/word/` for whole-word). Remote **domains** are blocked with
 Chrome's plain network-error page rather than the friendly block page — only
 domains baked into the manifest get the redirect treatment.
+
+Entries carry a `machine` field (`DEVICE_LABEL` from the extension's config,
+the hostname from the Mac job), so uploads from several devices stay
+distinguishable.
 
 ## Reading the digest
 

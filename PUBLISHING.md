@@ -7,8 +7,17 @@ How to ship a new version of Parent Hide AI to the (unlisted) Web Store listing.
 - [ ] Bump `"version"` in `parent-hide-ai/manifest.json` (must be higher than the
       version currently in the store, e.g. `2.0.0` → `2.0.1`).
 - [ ] `npm run test:rules` — offline regex logic, block AND allow cases.
+- [ ] `npm run test:upload` — log-upload batching and cursor logic.
 - [ ] `npm run test:smoke` — real Chromium: rules actually install
-      (`sg_error: null`, 142 rules) and redirects fire end-to-end.
+      (`sg_error: null`, 142 rules), redirects fire end-to-end, and the upload
+      endpoint is reachable from the service worker.
+- [ ] **`parent-hide-ai/upload-key.json` exists and holds the Worker's LOG_KEY.**
+      It is gitignored (this repo is public), so a fresh clone will not have it
+      — and without it the extension ships with uploading silently off. Copy it
+      from `upload-key.example.json`.
+- [ ] If `LOG_UPLOAD_URL` changed (or went null), update `PRIVACY_POLICY.md`,
+      re-publish the hosted copy, and update the Privacy Practices tab to
+      match. The disclosure and the code must not disagree.
 - [ ] Check whether `host_permissions` changed in this release. **If any host was
       added, the update will arrive disabled until the user re-accepts it** — plan
       to touch the kid's machine after it rolls out. (No change = silent update.)
@@ -18,8 +27,12 @@ How to ship a new version of Parent Hide AI to the (unlisted) Web Store listing.
 ```sh
 cd parent-hide-ai
 zip -r ../parent-hide-ai-<version>.zip . -x "README.md" -x "test.mjs" \
+    -x "upload-key.example.json" \
     -x ".DS_Store" -x "*/.DS_Store" -x "_metadata/*"
 ```
+
+`upload-key.json` **must be inside the zip** (`unzip -l` it and check) — it is
+gitignored, so it is easy to build a package that silently never uploads.
 
 `manifest.json` must sit at the **root** of the zip (it does with the command
 above — do not zip the folder itself). Zips are gitignored; they are upload
@@ -57,6 +70,14 @@ artifacts, not source.
   the unpacked one on machines that switch to the store version.
 
 ## Version history
+
+- **3.1.0** — Log upload moved into the extension. ChromeOS has no launchd and
+  no reachable path to Chrome's on-disk extension storage, so `tools/digest/`
+  can never run on the child's Chromebook; the service worker now POSTs new log
+  entries to the Worker's `/log` on the existing refresh alarm, in the same wire
+  format the Mac digest job uses. No new permissions (CORS, not host
+  permissions), so the update installs silently. **Data disclosure changed:**
+  the extension now transmits search records.
 
 - **2.0.1** — Search Guard actually works: v2.0.0 shipped with every keyword
   rule rejected by Chrome's 2KB compiled-regex cap (zero dynamic rules

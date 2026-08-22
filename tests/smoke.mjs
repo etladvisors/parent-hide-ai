@@ -80,6 +80,42 @@ if (REMOTE_CONFIG_URL) {
   }
 }
 
+// The uploader relies on CORS rather than a host permission (adding one would
+// land the update disabled until re-accepted on the device). Prove a real
+// extension service worker can reach the endpoint: a 401 means the request
+// got through and the Worker answered. A thrown TypeError means CORS blocked
+// it and the uploader is dead in the field.
+//
+// Deliberately unauthorized, so this writes nothing to the real log.
+const { LOG_UPLOAD_URL } = await import(path.join(EXT, "config.js"));
+if (LOG_UPLOAD_URL) {
+  const probe = await sw.evaluate(async (url) => {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer smoke-test-not-a-real-key",
+        },
+        body: JSON.stringify({ date: "1970-01-01", machine: "smoke", blocked: [], searches: [] }),
+      });
+      return { status: res.status };
+    } catch (e) {
+      return { error: String(e?.message || e) };
+    }
+  }, LOG_UPLOAD_URL);
+
+  if (probe.error) {
+    failures++;
+    console.log(`FAIL  upload endpoint unreachable from the service worker: ${probe.error}`);
+  } else if (probe.status !== 401) {
+    failures++;
+    console.log(`FAIL  upload endpoint rejected a bad key with ${probe.status}, expected 401`);
+  } else {
+    console.log("PASS  upload endpoint reachable via CORS and rejects a bad key (401)");
+  }
+}
+
 const page = await context.newPage();
 async function nav(url, waitMs = 2500) {
   try {
