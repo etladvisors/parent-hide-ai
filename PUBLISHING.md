@@ -71,6 +71,12 @@ artifacts, not source.
 
 ## Version history
 
+- **3.2.0** — Blocks all image search on the watched engines (Google Images,
+  Lens, and the other engines' image paths), via static rules 3-12 plus a
+  pushState backstop for the Images tab. No new permissions. Image rendering
+  in Gmail/Docs/Calendar is unaffected by construction (main_frame + exact
+  hosts) and is covered by explicit allow cases in `smoke.mjs`.
+
 - **3.1.0** — Log upload moved into the extension. ChromeOS has no launchd and
   no reachable path to Chrome's on-disk extension storage, so `tools/digest/`
   can never run on the child's Chromebook; the service worker now POSTs new log

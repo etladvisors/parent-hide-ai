@@ -7,6 +7,9 @@
 //
 // 2. Search Guard: compiles config.js into dynamic declarativeNetRequest
 //    rules that redirect blocked searches and sites to blocked.html.
+//
+// 3. Image search: static rules in rules.json block it at the network layer;
+//    isImageSearch() below is the same-document backstop.
 // ---------------------------------------------------------------------------
 
 import * as cfg from "./config.js";
@@ -40,7 +43,54 @@ function shouldStrip(url) {
   }
 }
 
+// --- Image search -----------------------------------------------------------
+//
+// Static rules in rules.json catch image-search URLs at the network layer.
+// This is the same-document backstop: clicking the "Images" tab on a results
+// page is a pushState navigation, so DNR never sees a request and the rules
+// alone would be bypassed by a single click.
+//
+// Deliberately narrow — it matches only search surfaces. Image *rendering* in
+// Gmail, Calendar and Docs is untouched: those are different hosts, and their
+// images load as sub-resources, which these listeners never see.
+
+const IMAGE_BLOCK_PAGE = "blocked.html?reason=images";
+
+function isImageSearch(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname;
+    const p = u.searchParams;
+    const path = u.pathname;
+
+    if (/^images\.google\./.test(host)) return true;
+    if (/^lens\.google\./.test(host)) return true;
+    if (/^images\.search\.yahoo\.com$/.test(host)) return true;
+
+    // Exact host match, so mail./docs./calendar.google.com never qualify.
+    if (/^(www\.)?google\.(com|co\.uk)$/.test(host)) {
+      if (path === "/imghp") return true;
+      if (path === "/search" && (p.get("udm") === "2" || p.get("tbm") === "isch")) {
+        return true;
+      }
+    }
+    if (/^(www\.)?bing\.com$/.test(host) && path.startsWith("/images")) return true;
+    if (/^search\.brave\.com$/.test(host) && path.startsWith("/images")) return true;
+    if (/^(www\.)?ecosia\.org$/.test(host) && path.startsWith("/images")) return true;
+    if (/^(www\.)?duckduckgo\.com$/.test(host)) {
+      if (["ia", "iax", "iar"].some((k) => p.get(k) === "images")) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+  if (isImageSearch(details.url)) {
+    chrome.tabs.update(details.tabId, { url: chrome.runtime.getURL(IMAGE_BLOCK_PAGE) });
+    return;
+  }
   const newUrl = shouldStrip(details.url);
   if (newUrl) {
     chrome.tabs.update(details.tabId, { url: newUrl });
@@ -49,6 +99,10 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
 
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId !== 0) return;
+  if (isImageSearch(details.url)) {
+    chrome.tabs.update(details.tabId, { url: chrome.runtime.getURL(IMAGE_BLOCK_PAGE) });
+    return;
+  }
   const newUrl = shouldStrip(details.url);
   if (newUrl) {
     chrome.tabs.update(details.tabId, { url: newUrl });

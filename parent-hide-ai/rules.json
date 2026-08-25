@@ -7,14 +7,18 @@
       "redirect": {
         "transform": {
           "queryTransform": {
-            "removeParams": ["udm"]
+            "removeParams": [
+              "udm"
+            ]
           }
         }
       }
     },
     "condition": {
       "regexFilter": "^https?://(www\\.)?google\\.com/search\\?([^#]*&)?udm=50",
-      "resourceTypes": ["main_frame"]
+      "resourceTypes": [
+        "main_frame"
+      ]
     }
   },
   {
@@ -28,7 +32,169 @@
     },
     "condition": {
       "regexFilter": "^https?://(?:www\\.)?google\\.com/(?:async/)?aimode\\?.*?(?:^|&)q=([^&]*)",
-      "resourceTypes": ["main_frame"]
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/search\\?([^#]*&)?udm=2(&|#|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/search\\?([^#]*&)?tbm=isch(&|#|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/imghp",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 6,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://images\\.google\\.",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 7,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://lens\\.google\\.",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 8,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?bing\\.com/images(/|\\?|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 9,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?duckduckgo\\.com/\\?([^#]*&)?ia[xr]?=images",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 10,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://images\\.search\\.yahoo\\.com/",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 11,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://search\\.brave\\.com/images(/|\\?|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 12,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=images"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?ecosia\\.org/images(/|\\?|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
     }
   }
 ]

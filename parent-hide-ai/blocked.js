@@ -4,7 +4,13 @@ const query = params.get("q");
 const host = params.get("host");
 
 const detail = document.getElementById("detail");
-if (reason === "site" && host) {
+if (reason === "images") {
+  // Not a blocked keyword — she typed something ordinary and asked for the
+  // Images tab. Say what is actually off, so the page isn't an accusation.
+  document.getElementById("heading").textContent = "Image search is turned off.";
+  detail.textContent =
+    "Web search still works — this turns off the image results tab only.";
+} else if (reason === "site" && host) {
   document.getElementById("heading").textContent = "This site is turned off.";
   detail.innerHTML = `You tried to open <span class="term"></span>.`;
   detail.querySelector(".term").textContent = host;
@@ -41,7 +47,7 @@ if (store.sg_logging) {
   sg_log.push({
     at: Date.now(),
     reason,
-    value: query ? query.replace(/\+/g, " ") : host,
+    value: query ? query.replace(/\+/g, " ") : host || "image search",
   });
   const limit = store.sg_logLimit || 300;
   await chrome.storage.local.set({ sg_log: sg_log.slice(-limit) });

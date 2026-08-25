@@ -44,3 +44,26 @@ div:has(> a[href*="udm=50"]),
 div:has(> button[aria-label*="AI Mode" i]) {
   display: none !important;
 }
+
+/* --- Images tab in the search-type bar (All / Images / Videos / …) ---------
+ * Rules in rules.json already block the destination; hiding the tab keeps it
+ * from being a standing invitation. Matching udm=2 with a trailing delimiter
+ * so this can't catch udm=25 or similar.
+ */
+a[href*="udm=2&"],
+a[href$="udm=2"],
+a[href*="tbm=isch"],
+div[role="listitem"]:has(a[href*="udm=2&"]),
+div[role="listitem"]:has(a[href$="udm=2"]),
+div[role="listitem"]:has(a[href*="tbm=isch"]),
+div[role="tab"]:has(a[href*="udm=2&"]),
+div[role="tab"]:has(a[href$="udm=2"]) {
+  display: none !important;
+}
+
+/* --- "Images" link on the google.com homepage and in the apps row --------- */
+a[href^="https://www.google.com/imghp"],
+a[href^="/imghp"],
+a[href^="https://images.google."] {
+  display: none !important;
+}

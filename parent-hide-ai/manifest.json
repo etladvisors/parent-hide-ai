@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Parent Hide AI",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Parental search filter: removes Google AI Mode and AI Overviews, and blocks searches matching a parent-managed keyword list.",
   "minimum_chrome_version": "120",
   "permissions": ["declarativeNetRequest", "webNavigation", "storage", "alarms"],

@@ -62,12 +62,31 @@ Chrome extension (Manifest V3) with two parental-control features:
    **The extension now transmits data** — `PRIVACY_POLICY.md` and the CWS
    Privacy Practices tab must stay consistent with `LOG_UPLOAD_URL`.
 
+### Image search (v3.2)
+
+Static rules 3-12 in `rules.json` redirect image-search URLs to
+`blocked.html?reason=images` on every watched engine: Google (`udm=2`, legacy
+`tbm=isch`, `/imghp`, `images.google.*`, `lens.google.*`), plus the image paths
+on the other engines. `isImageSearch()` in `background.js` is the
+same-document backstop — clicking the Images tab on a SERP is a pushState nav
+that DNR never sees, so the rules alone are bypassed by one click. `hide.css`
+hides the tab itself.
+
+**The blast radius is the thing to protect here.** Rules match `main_frame`
+only and pin exact hosts, so image *rendering* in Gmail/Docs/Calendar (different
+hosts, sub-resource loads) is untouched. `tests/smoke.mjs` has explicit allow
+cases for `mail.`/`docs.`/`calendar.`/`drive.google.com` and
+`googleusercontent.com` — keep them passing, a regression there breaks the
+child's email and homework, not just a filter.
+
+Needs no new `host_permissions`: every host involved is already covered.
+
 Static and dynamic DNR rules live in separate namespaces; no ID coordination is needed between `rules.json` and the compiled rules.
 
 ## Key Files
 
 - `manifest.json` - MV3 manifest; module service worker; two content-script groups
-- `rules.json` - Static DNR rules (AI Mode URL transforms)
+- `rules.json` - Static DNR rules (AI Mode URL transforms; image-search blocks, ids 3-12)
 - `background.js` - Service worker: AI SPA-navigation backstop + Search Guard rule installer
 - `config.js` - **The file to edit for Search Guard**: `BLOCKED_TERMS`, `BLOCKED_DOMAINS`, `SEARCH_ENGINES`, `LOG_ATTEMPTS`, `SUPPORT_LINE`
 - `rules/compile.js` - Compiles config into DNR rules (`termToPattern`, `buildRules`)
