@@ -15,7 +15,7 @@ Parent Hide AI
 ### Short Description (132 characters max)
 
 ```
-Parental search filter: removes Google AI Mode and AI Overviews, blocks image search, and blocks parent-chosen search terms.
+Parental search filter: hides Google AI features, blocks image/video/forum/shopping search, and blocks parent-chosen search terms.
 ```
 
 ### Detailed Description (16,000 characters max)
@@ -29,6 +29,7 @@ What it does:
 - Redirects AI Mode URLs back to standard Google Search results
 - Blocks searches whose query matches a parent-configured keyword list on supported search engines and social platforms, showing a supportive block page instead
 - Blocks image search on the supported search engines, including visual-search entry points, while leaving images on ordinary websites and in web apps unaffected
+- Blocks Google's video, short-video, forum, and shopping results tabs, so Google Search shows standard web results only — video and other media embedded in ordinary websites and web apps are unaffected
 - Blocks a parent-configured list of websites
 
 Why it exists:
@@ -36,8 +37,8 @@ This extension was built for parents who want their children to use search as a 
 
 How it works:
 - Uses CSS rules and a MutationObserver content script to hide Google AI interface elements
-- Uses Chrome's declarativeNetRequest API to redirect AI Mode URLs back to standard search, and to redirect searches matching the parent's keyword list — and image-search URLs — to a local block page
-- Image-search rules match top-level page navigations on the search hosts only, so images embedded in other websites and in the browser's web apps are never affected
+- Uses Chrome's declarativeNetRequest API to redirect AI Mode URLs back to standard search, and to redirect searches matching the parent's keyword list — and image-search and blocked results-tab URLs — to a local block page
+- Result-type rules match top-level page navigations on the search hosts only, so images and video embedded in other websites and in the browser's web apps are never affected
 - Uses the webNavigation API to handle in-page navigation events that bypass network-level rules
 
 Privacy:
@@ -75,7 +76,7 @@ English
 > This field is required. Reviewers reject vague or multi-purpose descriptions. Be specific about exactly one thing.
 
 ```
-This extension is a parental control filter for search. It removes Google AI Mode and AI Overview elements from Google Search results, and blocks searches that match a parent-configured keyword list, image searches, and a parent-configured list of sites on supported search engines, redirecting them to a local block page.
+This extension is a parental control filter for search. It removes Google AI Mode and AI Overview elements from Google Search results, and blocks searches that match a parent-configured keyword list, image searches, Google's video/forum/shopping results tabs, and a parent-configured list of sites on supported search engines, redirecting them to a local block page.
 ```
 
 ### Permission Justifications
@@ -85,13 +86,13 @@ This extension is a parental control filter for search. It removes Google AI Mod
 #### `declarativeNetRequest`
 
 ```
-Used for three things: (1) redirecting Google Search URLs that contain the AI Mode parameter (udm=50) or AI Mode paths (/aimode, /async/aimode) back to standard Google Search results, via static rules in rules.json; (2) redirecting searches whose query matches the parent-configured keyword list, and navigations to parent-blocked sites, to the extension's local block page, via dynamic rules compiled from the parent's configuration; and (3) redirecting image-search URLs on the supported search engines to the same block page. All matching happens inside the browser. Every rule is scoped to main_frame (top-level page navigations) on an explicit list of search hosts, so no rule can affect an image or other sub-resource loading inside any page.
+Used for three things: (1) redirecting Google Search URLs that contain the AI Mode parameter (udm=50) or AI Mode paths (/aimode, /async/aimode) back to standard Google Search results, via static rules in rules.json; (2) redirecting searches whose query matches the parent-configured keyword list, and navigations to parent-blocked sites, to the extension's local block page, via dynamic rules compiled from the parent's configuration; and (3) redirecting image-search URLs on the supported search engines — and Google's video, forum, and shopping results-tab URLs — to the same block page. All matching happens inside the browser. Every rule is scoped to main_frame (top-level page navigations) on an explicit list of search hosts, so no rule can affect an image or other sub-resource loading inside any page.
 ```
 
 #### `webNavigation`
 
 ```
-Used to detect in-page (single-page application) navigations that do not trigger traditional network requests. Google Search uses pushState-based navigation, so switching to AI Mode or to the Images tab from an existing results page happens without a full page load and is invisible to network-level rules. The webNavigation.onHistoryStateUpdated and onBeforeNavigate events allow the extension to catch these transitions and apply the same filtering.
+Used to detect in-page (single-page application) navigations that do not trigger traditional network requests. Google Search uses pushState-based navigation, so switching to AI Mode or to a blocked results tab (Images, Videos, Forums, Shopping) from an existing results page happens without a full page load and is invisible to network-level rules. The webNavigation.onHistoryStateUpdated and onBeforeNavigate events allow the extension to catch these transitions and apply the same filtering.
 ```
 
 #### `storage`
@@ -190,13 +191,14 @@ Before submitting, verify:
 - [ ] 128x128 icon is uploaded as the store icon
 - [ ] Description does not reference "blocking" or "removing" other companies' features in a way that implies malice — use neutral language like "hides," "removes from view," "redirects"
 - [ ] No mention of circumventing or bypassing security/safety features (this is a content preference tool, not a circumvention tool)
-- [ ] `manifest.json` version field is set (currently `3.2.0`)
+- [ ] `manifest.json` version field is set (currently `3.4.0`)
 - [ ] Data use disclosure reflects the upload (blocked attempts + observed searches leave the device as of v3.1.0)
 - [ ] **Before zipping v3.1:** `parent-hide-ai/upload-key.json` exists and holds the Worker's LOG_KEY — it is gitignored, so a fresh clone will not have it, and without it the extension silently never uploads
 - [ ] Hosted privacy policy re-published from the updated `PRIVACY_POLICY.md`
 - [ ] **Before zipping v3:** deploy `server/worker.js` and set `REMOTE_CONFIG_URL` in `config.js` to its `/config` URL — publishing with `null` means remote updates stay off until the next store review
 - [ ] Note: v3 adds only the `alarms` permission, which generates no warning — existing installs are NOT disabled by this update and no re-approval on the child's device is needed
 - [ ] Note: v3.2 adds **no** new permissions and no new hosts — image-search blocking reuses hosts already in `host_permissions`, so this update also installs silently
+- [ ] Note: v3.4 adds **no** new permissions and no new hosts — the video/forum/shopping results-tab blocking is Google-only and every host involved is already covered, so this update also installs silently
 - [ ] Note: v3.1 adds **no** new permissions. The upload endpoint is reached via CORS rather than a host permission, deliberately, so the update installs silently — verified by `npm run test:smoke`
 - [ ] If asked about the remote fetch in review: it downloads configuration data (a JSON keyword/site list) only, never code, and sends no user data — this is permitted under the remotely-hosted-code policy
 
@@ -215,4 +217,4 @@ Before submitting, verify:
 | Extension modifies search results | Clearly framed as a parental control / content filtering tool, not an ad blocker or SEO manipulation tool |
 | Keyword spam (rejected once, ref "Yellow Argon", Jul 2026) | Do NOT enumerate brand names (Bing, YouTube, TikTok, …) anywhere in the listing text — say "supported search engines and social platforms" and let the manifest's host_permissions be the authoritative list |
 | No screenshots | Screenshots provided showing the extension's effect |
-| "Extension breaks other sites" | Image-search rules are scoped to main_frame on an explicit host list; images in web apps and on ordinary sites are unaffected, and `smoke.mjs` carries allow cases proving it |
+| "Extension breaks other sites" | Result-type rules (images, videos, forums, shopping) are scoped to main_frame on an explicit host list; images and video in web apps and on ordinary sites are unaffected, and `smoke.mjs` carries allow cases proving it |

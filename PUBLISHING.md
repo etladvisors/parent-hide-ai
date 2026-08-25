@@ -71,6 +71,18 @@ artifacts, not source.
 
 ## Version history
 
+- **3.4.0** — Blocks Google's other result-type tabs: Videos (`udm=7`, legacy
+  `tbm=vid`, `/videohp`), Short videos (`udm=39`), Forums (`udm=18`) and
+  Shopping (`udm=28`, legacy `tbm=shop`, `/shopping`, `shopping.google.*`),
+  via static rules 13-20 plus the same pushState backstop
+  (`blockedResultType()`) that covers the Images tab. Google only — other
+  engines' video/shopping tabs are not touched. No new permissions and no new
+  hosts, so the update installs silently. Gmail/Docs/Calendar/Drive remain
+  unaffected by construction (main_frame + exact hosts) and by explicit allow
+  cases in `smoke.mjs`, including searches *about* videos/shopping/forums.
+  (v3.3 was server-side only — the nightly AI review — and shipped no
+  extension version.)
+
 - **3.2.0** — Blocks all image search on the watched engines (Google Images,
   Lens, and the other engines' image paths), via static rules 3-12 plus a
   pushState backstop for the Images tab. No new permissions. Image rendering

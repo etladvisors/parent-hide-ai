@@ -3,13 +3,21 @@ const reason = params.get("reason");
 const query = params.get("q");
 const host = params.get("host");
 
+// Result-type tabs that are switched off wholesale (not keyword matches).
+const TABS_OFF = {
+  images: { heading: "Image search is turned off.", label: "image search" },
+  videos: { heading: "Video search is turned off.", label: "video search" },
+  forums: { heading: "Forum search is turned off.", label: "forum search" },
+  shopping: { heading: "Shopping search is turned off.", label: "shopping search" },
+};
+
 const detail = document.getElementById("detail");
-if (reason === "images") {
-  // Not a blocked keyword — she typed something ordinary and asked for the
-  // Images tab. Say what is actually off, so the page isn't an accusation.
-  document.getElementById("heading").textContent = "Image search is turned off.";
-  detail.textContent =
-    "Web search still works — this turns off the image results tab only.";
+if (TABS_OFF[reason]) {
+  // Not a blocked keyword — she typed something ordinary and asked for a
+  // results tab that is off. Say what is actually off, so the page isn't an
+  // accusation.
+  document.getElementById("heading").textContent = TABS_OFF[reason].heading;
+  detail.textContent = `Web search still works — this turns off ${TABS_OFF[reason].label} only.`;
 } else if (reason === "site" && host) {
   document.getElementById("heading").textContent = "This site is turned off.";
   detail.innerHTML = `You tried to open <span class="term"></span>.`;
@@ -47,7 +55,9 @@ if (store.sg_logging) {
   sg_log.push({
     at: Date.now(),
     reason,
-    value: query ? query.replace(/\+/g, " ") : host || "image search",
+    value: query
+      ? query.replace(/\+/g, " ")
+      : host || TABS_OFF[reason]?.label || "search",
   });
   const limit = store.sg_logLimit || 300;
   await chrome.storage.local.set({ sg_log: sg_log.slice(-limit) });

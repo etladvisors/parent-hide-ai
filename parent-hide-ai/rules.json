@@ -196,5 +196,133 @@
         "main_frame"
       ]
     }
+  },
+  {
+    "id": 13,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=videos"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/search\\?([^#]*&)?udm=(7|39)(&|#|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 14,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=videos"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/search\\?([^#]*&)?tbm=vid(&|#|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 15,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=videos"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/videohp",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 16,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=forums"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/search\\?([^#]*&)?udm=18(&|#|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 17,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=shopping"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/search\\?([^#]*&)?udm=28(&|#|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 18,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=shopping"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/search\\?([^#]*&)?tbm=shop(&|#|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 19,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=shopping"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://(www\\.)?google\\.(com|co\\.uk)/shopping(/|\\?|$)",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  },
+  {
+    "id": 20,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html?reason=shopping"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https?://shopping\\.google\\.",
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
   }
 ]
