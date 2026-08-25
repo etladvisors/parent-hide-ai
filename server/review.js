@@ -105,6 +105,35 @@ export function vetProposals(proposals, existingTerms, limit = MAX_NEW_TERMS_PER
 }
 
 /**
+ * Render the parent-notification email for a review that added terms.
+ * Plain text on purpose — it reads fine anywhere and can't mangle terms.
+ */
+export function formatReviewEmail(audit) {
+  const added = audit?.added || [];
+  const n = added.length;
+  const subject = `Search Guard: ${n} term${n === 1 ? "" : "s"} added after reviewing ${audit.date}`;
+
+  const lines = [
+    `The nightly review of ${audit.date} added ${n} term${n === 1 ? "" : "s"} to the blocklist:`,
+    "",
+    ...added.map((a) => `  - "${a.term}"${a.reason ? ` — ${a.reason}` : ""}`),
+    "",
+  ];
+  if (audit.notes) lines.push(`Reviewer notes: ${audit.notes}`, "");
+  lines.push(
+    `Reviewed ${audit.reviewed} got-through search${audit.reviewed === 1 ? "" : "es"}` +
+      (audit.truncated ? ` (${audit.truncated} more not reviewed — over the nightly cap)` : "") +
+      `. Blocklist version is now ${audit.configVersion}.`,
+    "",
+    "The device picks these up within 30 minutes. Full audit record:",
+    `  curl <worker-url>/reviews?date=${audit.date} -H "Authorization: Bearer $ADMIN_KEY"`,
+    "",
+    "To undo a term: GET /config, remove it, and PUT /config back."
+  );
+  return { subject, text: lines.join("\n") };
+}
+
+/**
  * Merge accepted terms into the remote config additively. Domains are never
  * touched and terms are never removed — the review can only tighten, same
  * invariant as the extension's own remote merge.

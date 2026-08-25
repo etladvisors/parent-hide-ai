@@ -73,7 +73,11 @@ mirrors `rules/compile.js` semantics), sends the rest to `claude-opus-5`
 nothing already covered), and merges them **additively** into the remote
 blocklist. Additive-only, terms-only: the review never removes anything and
 never touches domains. Audit records land in KV (`review:<date>`, read via
-`GET /reviews`); `POST /review` runs one on demand. The baked-in
+`GET /reviews`); `POST /review` runs one on demand. On nights that ADD terms
+the Worker emails the parent via AgentMail (`sendReviewEmail`; body built by
+`formatReviewEmail` in `review.js`; secrets `AGENTMAIL_API_KEY` /
+`AGENTMAIL_INBOX` / `NOTIFY_EMAIL`, all optional; `POST /notify-test` sends a
+sample). The baked-in
 `config.js`/`compile.js` are **imported into the Worker bundle** — redeploy
 the Worker when they change. Needs the `ANTHROPIC_API_KEY` Worker secret;
 without it the run records a `reviewError` and changes nothing. No extension

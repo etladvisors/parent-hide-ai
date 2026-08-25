@@ -120,6 +120,30 @@ term, and `PUT /config` as in the daily-edit section above — the review will
 not re-add it unless the model proposes it again on a later night (if a term
 keeps coming back wrongly, add a note to `REVIEW_SYSTEM` in `worker.js`).
 
+### Email notification
+
+On any night the review **adds** terms, the Worker emails the parent a plain
+digest — what was added and why, the reviewer's notes, and how to undo —
+through an [AgentMail](https://agentmail.to) inbox. Three more secrets turn it
+on (all optional; unset means no email, the review still runs):
+
+```sh
+wrangler secret put AGENTMAIL_API_KEY   # from the AgentMail dashboard
+wrangler secret put AGENTMAIL_INBOX     # the sending inbox, e.g. notify@your-domain.com
+wrangler secret put NOTIFY_EMAIL        # where the digest goes
+```
+
+Quiet nights send nothing. Sends are idempotent per (date, content), so a
+retried run can't double-email. The outcome is recorded in that night's audit
+record (`email: "sent to ..."` / `"failed: ..."` / `"not configured"`).
+
+Verify the wiring end-to-end with a sample email (clearly marked as a test;
+does not touch the blocklist):
+
+```sh
+curl -X POST https://<worker-url>/notify-test -H "Authorization: Bearer $ADMIN_KEY"
+```
+
 To **disable** the review, remove the `[triggers]` block from `wrangler.toml`
 and redeploy (or `wrangler secret delete ANTHROPIC_API_KEY` — a run without
 the key records a `reviewError` and changes nothing).

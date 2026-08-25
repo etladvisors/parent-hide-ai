@@ -13,6 +13,7 @@ import {
   unblockedQueries,
   vetProposals,
   mergeConfig,
+  formatReviewEmail,
   MAX_NEW_TERMS_PER_RUN,
 } from "../server/review.js";
 
@@ -127,6 +128,32 @@ function check(name, cond, detail = "") {
     "missing config starts from the empty baseline",
     fromEmpty.version === 1 && fromEmpty.terms.length === 1 && fromEmpty.domains.length === 0
   );
+}
+
+// --- formatReviewEmail: the parent notification ------------------------------
+
+{
+  const audit = {
+    date: "2026-08-24",
+    reviewed: 12,
+    truncated: 0,
+    configVersion: 3,
+    notes: "Two new coded tags surfaced.",
+    added: [
+      { term: "new tag", reason: "pro-ED slang" },
+      { term: "/omad/", reason: "" },
+    ],
+  };
+  const { subject, text } = formatReviewEmail(audit);
+  check("subject names the date and count", subject === "Search Guard: 2 terms added after reviewing 2026-08-24");
+  check("body lists each term", text.includes('"new tag" — pro-ED slang') && text.includes('"/omad/"'));
+  check("empty reason gets no dangling dash", !text.includes('"/omad/" —'));
+  check("body carries the reviewer notes", text.includes("Two new coded tags surfaced."));
+  check("body states the new config version", text.includes("version is now 3"));
+
+  const one = formatReviewEmail({ ...audit, added: [audit.added[0]], truncated: 4 });
+  check("singular subject for one term", one.subject.startsWith("Search Guard: 1 term added"));
+  check("truncation is disclosed", one.text.includes("4 more not reviewed"));
 }
 
 if (failures) {

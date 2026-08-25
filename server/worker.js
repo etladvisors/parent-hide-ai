@@ -8,6 +8,7 @@
 //   GET  /logs?date=...   Bearer ADMIN_KEY. Read a day's uploads.
 //   GET  /reviews[?date=] Bearer ADMIN_KEY. Nightly-review audit records.
 //   POST /review          Bearer ADMIN_KEY. Run a review now ({date?, force?}).
+//   POST /notify-test     Bearer ADMIN_KEY. Send a sample added-terms email.
 //
 // A cron trigger (wrangler.toml [triggers]) runs the nightly AI review: the
 // previous day's got-through searches are classified by Claude, and vetted
@@ -21,9 +22,14 @@
 //   "review:<date>"   -> one nightly-review audit record (expires after 90 days)
 //   "reviewError:<date>" -> why a nightly review failed, if it did
 //
-// Secrets (wrangler secret put): ADMIN_KEY, LOG_KEY, ANTHROPIC_API_KEY.
-// Two auth keys on purpose — LOG_KEY lives on the child's machine and can
-// only ADD log entries; it can never read logs back or touch the blocklist.
+// Secrets (wrangler secret put): ADMIN_KEY, LOG_KEY, ANTHROPIC_API_KEY, and —
+// for the parent-notification email sent when a review ADDS terms —
+// AGENTMAIL_API_KEY, AGENTMAIL_INBOX (the sending inbox, e.g.
+// something@agentmail.to) and NOTIFY_EMAIL (the parent's address). With any
+// of the three unset, the review still runs; the audit just says
+// "not configured". Two auth keys on purpose — LOG_KEY lives on the child's
+// machine and can only ADD log entries; it can never read logs back or touch
+// the blocklist.
 // ---------------------------------------------------------------------------
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -39,6 +45,7 @@ import {
   unblockedQueries,
   vetProposals,
   mergeConfig,
+  formatReviewEmail,
   MAX_NEW_TERMS_PER_RUN,
 } from "./review.js";
 
@@ -194,11 +201,52 @@ async function runReview(env, now, { date = null, force = false } = {}) {
     audit.notes = "No new got-through queries to review.";
   }
 
+  // Notify the parent only when the blocklist actually changed. An email
+  // failure never fails the review — the outcome lands in the audit either way.
+  if (audit.added.length) {
+    try {
+      audit.email = await sendReviewEmail(env, audit);
+    } catch (e) {
+      audit.email = `failed: ${String(e?.message || e)}`;
+    }
+  }
+
   await env.SG_KV.put(auditKey, JSON.stringify(audit), {
     expirationTtl: LOG_TTL_SECONDS,
   });
   await env.SG_KV.delete(`reviewError:${reviewDate}`);
   return audit;
+}
+
+// Send the added-terms digest through the parent's AgentMail inbox.
+// POST https://api.agentmail.to/v0/inboxes/{inbox_id}/messages/send
+async function sendReviewEmail(env, audit) {
+  if (!env.AGENTMAIL_API_KEY || !env.AGENTMAIL_INBOX || !env.NOTIFY_EMAIL) {
+    return "not configured";
+  }
+  const { subject, text } = formatReviewEmail(audit);
+  // Dedupe retries of the SAME email without blocking a forced re-run whose
+  // outcome differs (same key + different body would be a 409): key on date
+  // plus a digest of the exact message content.
+  const termsDigest = [...new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${subject}\n${text}`))
+  )].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const res = await fetch(
+    `https://api.agentmail.to/v0/inboxes/${encodeURIComponent(env.AGENTMAIL_INBOX)}/messages/send`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.AGENTMAIL_API_KEY}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `sg-review-${audit.date}-${termsDigest}`,
+      },
+      body: JSON.stringify({ to: env.NOTIFY_EMAIL, subject, text }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`AgentMail HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  return `sent to ${env.NOTIFY_EMAIL}`;
 }
 
 export default {
@@ -310,6 +358,26 @@ export default {
         return json(await runReview(env, new Date(), { date, force: Boolean(body.force) }));
       } catch (e) {
         return json({ error: String(e?.message || e) }, 500);
+      }
+    }
+
+    // Send a sample added-terms email through the real code path, so the
+    // AgentMail wiring can be verified without waiting for a night on which
+    // the review actually adds something.
+    if (url.pathname === "/notify-test" && request.method === "POST") {
+      if (!authorized(request, env.ADMIN_KEY)) return json({ error: "unauthorized" }, 401);
+      try {
+        const result = await sendReviewEmail(env, {
+          date: today(),
+          added: [{ term: "example term", reason: "connectivity test — not on the blocklist" }],
+          reviewed: 0,
+          truncated: 0,
+          configVersion: 0,
+          notes: `This is a test email sent at ${new Date().toISOString()}. The blocklist was not changed.`,
+        });
+        return json({ ok: true, email: result });
+      } catch (e) {
+        return json({ ok: false, email: `failed: ${String(e?.message || e)}` }, 502);
       }
     }
 
