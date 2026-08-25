@@ -154,6 +154,19 @@ const cases = [
   ["images: brave", "https://search.brave.com/images?q=zebra", (u) => u.includes("reason=images")],
   ["images: ecosia", "https://www.ecosia.org/images?q=zebra", (u) => u.includes("reason=images")],
 
+  // --- result-type tabs on Google: videos / short videos / forums / shopping
+  ["videos: google udm=7", "https://www.google.com/search?q=zebra&udm=7", (u) => u.includes("reason=videos")],
+  ["videos: google udm=7 first", "https://www.google.com/search?udm=7&q=zebra", (u) => u.includes("reason=videos")],
+  ["videos: google short videos udm=39", "https://www.google.com/search?q=zebra&udm=39", (u) => u.includes("reason=videos")],
+  ["videos: google legacy tbm=vid", "https://www.google.com/search?q=zebra&tbm=vid", (u) => u.includes("reason=videos")],
+  ["videos: google videohp", "https://www.google.com/videohp", (u) => u.includes("reason=videos")],
+  ["videos: google.co.uk udm=7", "https://www.google.co.uk/search?q=zebra&udm=7", (u) => u.includes("reason=videos")],
+  ["forums: google udm=18", "https://www.google.com/search?q=zebra&udm=18", (u) => u.includes("reason=forums")],
+  ["shopping: google udm=28", "https://www.google.com/search?q=zebra&udm=28", (u) => u.includes("reason=shopping")],
+  ["shopping: google legacy tbm=shop", "https://www.google.com/search?q=zebra&tbm=shop", (u) => u.includes("reason=shopping")],
+  ["shopping: google /shopping path", "https://www.google.com/shopping", (u) => u.includes("reason=shopping")],
+  ["shopping: shopping.google.com", "https://shopping.google.com/", (u) => u.includes("reason=shopping")],
+
   // --- the blast radius: none of this may touch non-search Google ----------
   // Regressions here would break image rendering in Gmail / Docs / Calendar,
   // which is the whole reason the rules match main_frame on exact hosts.
@@ -164,6 +177,13 @@ const cases = [
   ["allow user content host", "https://lh3.googleusercontent.com/", (u) => !u.includes("blocked.html")],
   ["allow ordinary web search", "https://www.bing.com/search?q=zebra+facts", (u) => !u.includes("blocked.html")],
   ["allow udm=25 (not the images tab)", "https://www.bing.com/search?q=zebra&udm=25", (u) => !u.includes("blocked.html")],
+  ["allow web tab udm=14", "https://www.google.com/search?q=zebra&udm=14", (u) => !u.includes("blocked.html")],
+  ["allow udm=71 (not the videos tab)", "https://www.google.com/search?q=zebra&udm=71", (u) => !u.includes("blocked.html")],
+  ["allow news tab tbm=nws", "https://www.google.com/search?q=zebra&tbm=nws", (u) => !u.includes("blocked.html")],
+  // Searching ABOUT videos/shopping/forums is schoolwork, not a tab switch.
+  ["allow the word video in a query", "https://www.bing.com/search?q=video+project+ideas+for+school", (u) => !u.includes("blocked.html")],
+  ["allow the word shopping in a query", "https://www.bing.com/search?q=grocery+shopping+list+template", (u) => !u.includes("blocked.html")],
+  ["allow the word forum in a query", "https://www.bing.com/search?q=roman+forum+history", (u) => !u.includes("blocked.html")],
 ];
 
 for (const [name, url, ok] of cases) {

@@ -67,3 +67,50 @@ a[href^="/imghp"],
 a[href^="https://images.google."] {
   display: none !important;
 }
+
+/* --- Videos / Short videos / Forums / Shopping tabs (v3.4) -----------------
+ * Rules in rules.json already block the destinations (udm=7 videos, udm=39
+ * short videos, udm=18 forums, udm=28 shopping, plus the legacy tbm=
+ * spellings); hiding the tabs keeps them from being standing invitations.
+ * Same trailing-delimiter trick as the Images tab above, so udm=7 can't
+ * catch udm=71 and so on.
+ */
+a[href*="udm=7&"],
+a[href$="udm=7"],
+a[href*="udm=39&"],
+a[href$="udm=39"],
+a[href*="udm=18&"],
+a[href$="udm=18"],
+a[href*="udm=28&"],
+a[href$="udm=28"],
+a[href*="tbm=vid"],
+a[href*="tbm=shop"],
+div[role="listitem"]:has(a[href*="udm=7&"]),
+div[role="listitem"]:has(a[href$="udm=7"]),
+div[role="listitem"]:has(a[href*="udm=39&"]),
+div[role="listitem"]:has(a[href$="udm=39"]),
+div[role="listitem"]:has(a[href*="udm=18&"]),
+div[role="listitem"]:has(a[href$="udm=18"]),
+div[role="listitem"]:has(a[href*="udm=28&"]),
+div[role="listitem"]:has(a[href$="udm=28"]),
+div[role="listitem"]:has(a[href*="tbm=vid"]),
+div[role="listitem"]:has(a[href*="tbm=shop"]),
+div[role="tab"]:has(a[href*="udm=7&"]),
+div[role="tab"]:has(a[href$="udm=7"]),
+div[role="tab"]:has(a[href*="udm=39&"]),
+div[role="tab"]:has(a[href$="udm=39"]),
+div[role="tab"]:has(a[href*="udm=18&"]),
+div[role="tab"]:has(a[href$="udm=18"]),
+div[role="tab"]:has(a[href*="udm=28&"]),
+div[role="tab"]:has(a[href$="udm=28"]) {
+  display: none !important;
+}
+
+/* --- "Shopping" / video-search entry links elsewhere on google.com -------- */
+a[href^="https://www.google.com/shopping"],
+a[href^="/shopping"],
+a[href^="https://shopping.google."],
+a[href^="https://www.google.com/videohp"],
+a[href^="/videohp"] {
+  display: none !important;
+}

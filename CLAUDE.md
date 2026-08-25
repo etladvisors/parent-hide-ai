@@ -85,15 +85,21 @@ changes — it just polls `/config` as before. Run `npm run test:review` after
 touching `server/review.js`. PRIVACY_POLICY.md §3 discloses the Anthropic
 processing — keep it consistent.
 
-### Image search (v3.2)
+### Image search (v3.2) and other result types (v3.4)
 
 Static rules 3-12 in `rules.json` redirect image-search URLs to
 `blocked.html?reason=images` on every watched engine: Google (`udm=2`, legacy
 `tbm=isch`, `/imghp`, `images.google.*`, `lens.google.*`), plus the image paths
-on the other engines. `isImageSearch()` in `background.js` is the
-same-document backstop — clicking the Images tab on a SERP is a pushState nav
+on the other engines. Rules 13-20 (v3.4) do the same on **Google only** for
+the other result-type tabs: Videos (`udm=7`, legacy `tbm=vid`, `/videohp`),
+Short videos (`udm=39`), Forums (`udm=18`) and Shopping (`udm=28`, legacy
+`tbm=shop`, `/shopping`, `shopping.google.*`), each with its own `reason=`.
+`blockedResultType()` in `background.js` (né `isImageSearch()`) is the
+same-document backstop — clicking a results tab on a SERP is a pushState nav
 that DNR never sees, so the rules alone are bypassed by one click. `hide.css`
-hides the tab itself.
+hides the tabs themselves. Other engines' video/shopping tabs are NOT blocked
+(deliberate scope choice); extend rules 13-20 the way 8-12 extend 3-7 if that
+changes.
 
 **The blast radius is the thing to protect here.** Rules match `main_frame`
 only and pin exact hosts, so image *rendering* in Gmail/Docs/Calendar (different
@@ -109,7 +115,7 @@ Static and dynamic DNR rules live in separate namespaces; no ID coordination is 
 ## Key Files
 
 - `manifest.json` - MV3 manifest; module service worker; two content-script groups
-- `rules.json` - Static DNR rules (AI Mode URL transforms; image-search blocks, ids 3-12)
+- `rules.json` - Static DNR rules (AI Mode URL transforms; image-search blocks, ids 3-12; Google video/forum/shopping blocks, ids 13-20)
 - `background.js` - Service worker: AI SPA-navigation backstop + Search Guard rule installer
 - `config.js` - **The file to edit for Search Guard**: `BLOCKED_TERMS`, `BLOCKED_DOMAINS`, `SEARCH_ENGINES`, `LOG_ATTEMPTS`, `SUPPORT_LINE`
 - `rules/compile.js` - Compiles config into DNR rules (`termToPattern`, `buildRules`)

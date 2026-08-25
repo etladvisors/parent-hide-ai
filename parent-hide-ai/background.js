@@ -8,8 +8,9 @@
 // 2. Search Guard: compiles config.js into dynamic declarativeNetRequest
 //    rules that redirect blocked searches and sites to blocked.html.
 //
-// 3. Image search: static rules in rules.json block it at the network layer;
-//    isImageSearch() below is the same-document backstop.
+// 3. Blocked result types (images/videos/forums/shopping): static rules in
+//    rules.json block them at the network layer; blockedResultType() below is
+//    the same-document backstop.
 // ---------------------------------------------------------------------------
 
 import * as cfg from "./config.js";
@@ -43,52 +44,65 @@ function shouldStrip(url) {
   }
 }
 
-// --- Image search -----------------------------------------------------------
+// --- Blocked result types: images, videos, forums, shopping -----------------
 //
-// Static rules in rules.json catch image-search URLs at the network layer.
-// This is the same-document backstop: clicking the "Images" tab on a results
-// page is a pushState navigation, so DNR never sees a request and the rules
-// alone would be bypassed by a single click.
+// Static rules in rules.json catch these URLs at the network layer. This is
+// the same-document backstop: clicking the "Images" / "Videos" / "Forums" /
+// "Shopping" tab on a results page is a pushState navigation, so DNR never
+// sees a request and the rules alone would be bypassed by a single click.
 //
-// Deliberately narrow — it matches only search surfaces. Image *rendering* in
-// Gmail, Calendar and Docs is untouched: those are different hosts, and their
-// images load as sub-resources, which these listeners never see.
+// Deliberately narrow — it matches only search surfaces, on exact hosts.
+// Image and video *rendering* in Gmail, Calendar and Docs is untouched: those
+// are different hosts, and their media load as sub-resources, which these
+// listeners never see.
 
-const IMAGE_BLOCK_PAGE = "blocked.html?reason=images";
+// udm values on google.com/search: 2 images, 7 videos, 39 short videos,
+// 18 forums, 28 shopping. tbm= is the legacy spelling of the same tabs.
+const BLOCKED_UDM = { 2: "images", 7: "videos", 39: "videos", 18: "forums", 28: "shopping" };
+const BLOCKED_TBM = { isch: "images", vid: "videos", shop: "shopping" };
 
-function isImageSearch(url) {
+function blockedResultType(url) {
   try {
     const u = new URL(url);
     const host = u.hostname;
     const p = u.searchParams;
     const path = u.pathname;
 
-    if (/^images\.google\./.test(host)) return true;
-    if (/^lens\.google\./.test(host)) return true;
-    if (/^images\.search\.yahoo\.com$/.test(host)) return true;
+    if (/^images\.google\./.test(host)) return "images";
+    if (/^lens\.google\./.test(host)) return "images";
+    if (/^images\.search\.yahoo\.com$/.test(host)) return "images";
+    if (/^shopping\.google\./.test(host)) return "shopping";
 
     // Exact host match, so mail./docs./calendar.google.com never qualify.
     if (/^(www\.)?google\.(com|co\.uk)$/.test(host)) {
-      if (path === "/imghp") return true;
-      if (path === "/search" && (p.get("udm") === "2" || p.get("tbm") === "isch")) {
-        return true;
+      if (path === "/imghp") return "images";
+      if (path === "/videohp") return "videos";
+      if (path === "/shopping" || path.startsWith("/shopping/")) return "shopping";
+      if (path === "/search") {
+        const byUdm = BLOCKED_UDM[p.get("udm")];
+        if (byUdm) return byUdm;
+        const byTbm = BLOCKED_TBM[p.get("tbm")];
+        if (byTbm) return byTbm;
       }
     }
-    if (/^(www\.)?bing\.com$/.test(host) && path.startsWith("/images")) return true;
-    if (/^search\.brave\.com$/.test(host) && path.startsWith("/images")) return true;
-    if (/^(www\.)?ecosia\.org$/.test(host) && path.startsWith("/images")) return true;
+    if (/^(www\.)?bing\.com$/.test(host) && path.startsWith("/images")) return "images";
+    if (/^search\.brave\.com$/.test(host) && path.startsWith("/images")) return "images";
+    if (/^(www\.)?ecosia\.org$/.test(host) && path.startsWith("/images")) return "images";
     if (/^(www\.)?duckduckgo\.com$/.test(host)) {
-      if (["ia", "iax", "iar"].some((k) => p.get(k) === "images")) return true;
+      if (["ia", "iax", "iar"].some((k) => p.get(k) === "images")) return "images";
     }
-    return false;
+    return null;
   } catch {
-    return false;
+    return null;
   }
 }
 
 chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
-  if (isImageSearch(details.url)) {
-    chrome.tabs.update(details.tabId, { url: chrome.runtime.getURL(IMAGE_BLOCK_PAGE) });
+  const reason = blockedResultType(details.url);
+  if (reason) {
+    chrome.tabs.update(details.tabId, {
+      url: chrome.runtime.getURL(`blocked.html?reason=${reason}`),
+    });
     return;
   }
   const newUrl = shouldStrip(details.url);
@@ -99,8 +113,11 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
 
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId !== 0) return;
-  if (isImageSearch(details.url)) {
-    chrome.tabs.update(details.tabId, { url: chrome.runtime.getURL(IMAGE_BLOCK_PAGE) });
+  const reason = blockedResultType(details.url);
+  if (reason) {
+    chrome.tabs.update(details.tabId, {
+      url: chrome.runtime.getURL(`blocked.html?reason=${reason}`),
+    });
     return;
   }
   const newUrl = shouldStrip(details.url);
