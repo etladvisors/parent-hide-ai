@@ -5,7 +5,8 @@
 Parent Hide AI is a parental control extension, installed and configured by a
 parent on a device they administer. It does not use cookies, analytics, or
 tracking of any kind. No data is sold, and no data is shared with third
-parties.
+parties except as described in section 3 below (service providers that
+process data on the parent's behalf).
 
 The extension does three things:
 
@@ -38,6 +39,17 @@ The extension does three things:
    The extension transmits **only** those log entries. It does not transmit
    page contents, cookies, credentials, form data, browsing history outside the
    supported search sites, or any account identifier.
+
+   On the parent's server, uploaded search queries may be processed
+   automatically to help the parent keep the keyword list current: once a day
+   the server sends the previous day's queries (query text and the site they
+   occurred on — no identifiers) to Anthropic's Claude API, acting as a
+   processor for the parent, to identify queries related to the categories the
+   parent filters. The result is a suggested update to the parent's own
+   keyword list, recorded in an audit log the parent can review. Under
+   Anthropic's commercial API terms this data is not used to train models.
+   This processing happens on the parent's server, not on the device, and is
+   optional — it is off unless the parent configures an API key.
 
    This behaviour can be turned off by setting `LOG_UPLOAD_URL` to null in the
    extension's configuration, in which case the logs remain on the device only.

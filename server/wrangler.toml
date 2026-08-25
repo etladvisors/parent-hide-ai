@@ -1,6 +1,12 @@
 name = "sg-config"
 main = "worker.js"
 compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Nightly AI review of the previous day's got-through searches.
+# 09:00 UTC = 4am Central / 2am Pacific. Times are always UTC.
+[triggers]
+crons = ["0 9 * * *"]
 
 [[kv_namespaces]]
 binding = "SG_KV"
