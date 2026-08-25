@@ -9,6 +9,7 @@
     "test:baseline": "npx playwright test tests/baseline.spec.ts",
     "test:monitor": "npx playwright test tests/baseline.spec.ts tests/ai-hiding.spec.ts",
     "test:upload": "node tests/upload.test.mjs",
+    "test:review": "node tests/review.test.mjs",
     "test:upload:e2e": "node tests/upload-e2e.mjs"
   },
   "devDependencies": {

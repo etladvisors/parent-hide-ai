@@ -62,6 +62,25 @@ Chrome extension (Manifest V3) with two parental-control features:
    **The extension now transmits data** — `PRIVACY_POLICY.md` and the CWS
    Privacy Practices tab must stay consistent with `LOG_UPLOAD_URL`.
 
+### Nightly AI review (v3.3, server-side only)
+
+A cron trigger on the Worker (`[triggers]` in `server/wrangler.toml`, 09:00
+UTC) reviews the previous day's got-through searches (`blocked: false`
+entries): drops what the current blocklist already covers (`termMatcher`
+mirrors `rules/compile.js` semantics), sends the rest to `claude-opus-5`
+(structured output via `zodOutputFormat`), vets the proposals
+(`vetProposals` in `server/review.js` — plain-word syntax only, ≤15/night,
+nothing already covered), and merges them **additively** into the remote
+blocklist. Additive-only, terms-only: the review never removes anything and
+never touches domains. Audit records land in KV (`review:<date>`, read via
+`GET /reviews`); `POST /review` runs one on demand. The baked-in
+`config.js`/`compile.js` are **imported into the Worker bundle** — redeploy
+the Worker when they change. Needs the `ANTHROPIC_API_KEY` Worker secret;
+without it the run records a `reviewError` and changes nothing. No extension
+changes — it just polls `/config` as before. Run `npm run test:review` after
+touching `server/review.js`. PRIVACY_POLICY.md §3 discloses the Anthropic
+processing — keep it consistent.
+
 ### Image search (v3.2)
 
 Static rules 3-12 in `rules.json` redirect image-search URLs to
@@ -98,7 +117,7 @@ Static and dynamic DNR rules live in separate namespaces; no ID coordination is 
 - `upload.js` - Log-upload batching (`planUpload`); pure, no chrome.* or network
 - `upload-key.json` - **Gitignored.** Holds the Worker LOG_KEY; template in `upload-key.example.json`
 - `test.mjs` - Offline harness for compiled Search Guard rules
-- `server/` - Cloudflare Worker: serves the remote blocklist (`GET/PUT /config`), receives nightly digests (`POST /log`, `GET /logs`)
+- `server/` - Cloudflare Worker: serves the remote blocklist (`GET/PUT /config`), receives log uploads (`POST /log`, `GET /logs`), runs the nightly AI review (`worker.js` cron + `review.js` pure logic, tested by `tests/review.test.mjs`)
 - `tools/digest/` - launchd job for the child's Mac: uploads the local logs to the Worker nightly
 
 ## Development

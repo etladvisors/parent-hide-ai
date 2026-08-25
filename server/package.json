@@ -1,0 +1,10 @@
+{
+  "name": "sg-config-server",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker: Search Guard remote blocklist, log intake, nightly AI review",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
+    "zod": "^4.4.3"
+  }
+}
